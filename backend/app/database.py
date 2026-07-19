@@ -12,6 +12,8 @@ async def connect_db():
     db = client[settings.DB_NAME]
     await db.users.create_index("email", unique=True)
     await db.users.create_index("phone", unique=True)
+    await db.users.create_index("reset_token", sparse=True)
+    await db.users.create_index("verification_token", sparse=True)
     await db.medicines.create_index("name")
     await db.medicines.create_index("category")
     await db.medicines.create_index([("price", 1)])

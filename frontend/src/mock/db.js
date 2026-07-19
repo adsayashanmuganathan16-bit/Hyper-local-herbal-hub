@@ -12,7 +12,7 @@ const KEYS = {
   seedVersion: 'herbal_hub_seed_version',
 };
 
-const SEED_VERSION = '4';
+const SEED_VERSION = '5';
 
 export const CATEGORIES = [
   'Ayurvedic',
@@ -315,6 +315,7 @@ function seedUsers() {
       password: 'admin123',
       role: 'admin',
       is_active: true,
+      email_verified: true,
       profile_image: null,
       address: {},
       created_at: daysAgo(120),
@@ -327,6 +328,7 @@ function seedUsers() {
       password: 'demo123',
       role: 'customer',
       is_active: true,
+      email_verified: true,
       profile_image: null,
       address: {},
       created_at: daysAgo(40),
@@ -339,6 +341,7 @@ function seedUsers() {
       password: 'priya123',
       role: 'customer',
       is_active: true,
+      email_verified: false,
       profile_image: null,
       address: {},
       created_at: daysAgo(28),
@@ -351,6 +354,7 @@ function seedUsers() {
       password: 'rahul123',
       role: 'customer',
       is_active: false,
+      email_verified: false,
       profile_image: null,
       address: {},
       created_at: daysAgo(15),

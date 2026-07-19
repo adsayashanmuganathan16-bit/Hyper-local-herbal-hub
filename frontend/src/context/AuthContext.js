@@ -10,6 +10,7 @@ import { authApi } from '../api/authApi';
 export const AuthContext = createContext(null);
 
 const TOKEN_KEY = 'herbal_hub_token';
+const REFRESH_KEY = 'herbal_hub_refresh_token';
 const USER_KEY = 'herbal_hub_user';
 
 function readStoredUser() {
@@ -47,8 +48,9 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const persist = useCallback((token, profile) => {
+  const persist = useCallback((token, profile, refreshToken) => {
     localStorage.setItem(TOKEN_KEY, token);
+    if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
     localStorage.setItem(USER_KEY, JSON.stringify(profile));
     setUser(profile);
   }, []);
@@ -56,7 +58,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(
     async (email, password) => {
       const { data } = await authApi.login({ email, password });
-      persist(data.token || data.access_token, data.user);
+      persist(data.token || data.access_token, data.user, data.refresh_token);
       return data.user;
     },
     [persist]
@@ -65,14 +67,29 @@ export function AuthProvider({ children }) {
   const register = useCallback(
     async (payload) => {
       const { data } = await authApi.register(payload);
-      persist(data.token || data.access_token, data.user);
+      persist(data.token || data.access_token, data.user, data.refresh_token);
       return data.user;
     },
     [persist]
   );
 
+  // Exchange the stored refresh token for a fresh access token.
+  const refreshAccessToken = useCallback(async () => {
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    if (!refreshToken) return null;
+    try {
+      const { data } = await authApi.refreshToken(refreshToken);
+      localStorage.setItem(TOKEN_KEY, data.access_token);
+      if (data.refresh_token) localStorage.setItem(REFRESH_KEY, data.refresh_token);
+      return data.access_token;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(USER_KEY);
     setUser(null);
   }, []);
@@ -91,6 +108,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    refreshAccessToken,
     updateUser,
     loading,
     isAuthenticated: !!user,
