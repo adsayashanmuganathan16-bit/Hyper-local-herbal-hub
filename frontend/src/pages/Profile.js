@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiUser, FiMail, FiPhone, FiMapPin, FiCamera, FiSave } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiMapPin, FiCamera, FiSave, FiLock } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/authApi';
 import { toast } from 'react-toastify';
@@ -17,8 +17,28 @@ export default function Profile() {
     pincode: user?.address?.pincode || '',
   });
   const [saving, setSaving] = useState(false);
+  const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [changingPw, setChangingPw] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handlePwChange = (e) => setPwForm({ ...pwForm, [e.target.name]: e.target.value });
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!pwForm.current_password || !pwForm.new_password) return toast.error('Please fill all password fields');
+    if (pwForm.new_password.length < 6) return toast.error('New password must be at least 6 characters');
+    if (pwForm.new_password !== pwForm.confirm_password) return toast.error('New passwords do not match');
+    try {
+      setChangingPw(true);
+      await authApi.changePassword(pwForm.current_password, pwForm.new_password);
+      toast.success('Password changed successfully');
+      setPwForm({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Password change failed');
+    } finally {
+      setChangingPw(false);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -103,6 +123,32 @@ export default function Profile() {
               </div>
               <button type="submit" className="btn btn-primary" disabled={saving}>
                 <FiSave size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </form>
+          </div>
+
+          <div className="profile-card mt-6">
+            <h2 className="font-display mb-4" style={{ fontSize: 20, color: 'var(--green-900)' }}>
+              <FiLock size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />
+              Change Password
+            </h2>
+            <form onSubmit={handleChangePassword} className="profile-form">
+              <div className="form-group">
+                <label className="form-label">Current Password</label>
+                <input type="password" name="current_password" className="form-input" placeholder="Current password" value={pwForm.current_password} onChange={handlePwChange} />
+              </div>
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label">New Password</label>
+                  <input type="password" name="new_password" className="form-input" placeholder="Min 6 characters" value={pwForm.new_password} onChange={handlePwChange} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Confirm New Password</label>
+                  <input type="password" name="confirm_password" className="form-input" placeholder="Re-enter new password" value={pwForm.confirm_password} onChange={handlePwChange} />
+                </div>
+              </div>
+              <button type="submit" className="btn btn-primary" disabled={changingPw}>
+                <FiLock size={16} /> {changingPw ? 'Updating...' : 'Update Password'}
               </button>
             </form>
           </div>

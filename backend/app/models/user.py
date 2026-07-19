@@ -30,6 +30,28 @@ class UserUpdate(BaseModel):
     profile_image: Optional[str] = None
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=6)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=6)
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
 class UserInDB(BaseModel):
     id: str = Field(alias="_id")
     name: str
@@ -39,6 +61,7 @@ class UserInDB(BaseModel):
     address: Optional[dict] = None
     profile_image: Optional[str] = None
     is_active: bool = True
+    email_verified: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

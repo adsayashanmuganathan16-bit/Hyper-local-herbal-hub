@@ -344,3 +344,7 @@
   background: var(--grad-darkgreen) !important;
   color: #fff !important;
 }
+
+/* Email verification spinner */
+.verify-spin { animation: verifySpin 1s linear infinite; }
+@keyframes verifySpin { to { transform: rotate(360deg); } }

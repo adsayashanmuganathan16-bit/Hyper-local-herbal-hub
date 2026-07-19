@@ -229,13 +229,20 @@ const routes = [
     const user = db.getUsers().find((u) => u.email.toLowerCase() === (body.email || '').toLowerCase());
     if (!user || user.password !== body.password) throw new ApiError(401, 'Invalid email or password');
     if (!user.is_active) throw new ApiError(403, 'Your account has been deactivated');
-    return { access_token: `mock.${user.id}`, token: `mock.${user.id}`, token_type: 'bearer', user: publicUser(user) };
+    return {
+      access_token: `mock.${user.id}`,
+      token: `mock.${user.id}`,
+      refresh_token: `mockrefresh.${user.id}`,
+      token_type: 'bearer',
+      user: publicUser(user),
+    };
   }],
   ['POST', '/api/auth/register', ({ body }) => {
     const users = db.getUsers();
     if (users.some((u) => u.email.toLowerCase() === (body.email || '').toLowerCase())) {
       throw new ApiError(400, 'An account with this email already exists');
     }
+    const verification_token = uid();
     const user = {
       id: uid(),
       name: body.name,
@@ -244,13 +251,96 @@ const routes = [
       password: body.password,
       role: 'customer',
       is_active: true,
+      email_verified: false,
+      verification_token,
       profile_image: null,
       address: {},
       created_at: new Date().toISOString(),
     };
     users.push(user);
     db.setUsers(users);
-    return { access_token: `mock.${user.id}`, token: `mock.${user.id}`, token_type: 'bearer', user: publicUser(user) };
+    return {
+      access_token: `mock.${user.id}`,
+      token: `mock.${user.id}`,
+      refresh_token: `mockrefresh.${user.id}`,
+      token_type: 'bearer',
+      // Demo helper: real backend emails this token; here we return it so the
+      // email-verification flow can be exercised without an email server.
+      verification_token,
+      user: publicUser(user),
+    };
+  }],
+  ['POST', '/api/auth/refresh', ({ body }) => {
+    const rt = body.refresh_token || '';
+    const userId = rt.startsWith('mockrefresh.') ? rt.slice(12) : null;
+    const user = userId && db.getUsers().find((u) => u.id === userId);
+    if (!user || !user.is_active) throw new ApiError(401, 'Invalid refresh token');
+    return {
+      access_token: `mock.${user.id}`,
+      refresh_token: `mockrefresh.${user.id}`,
+      token_type: 'bearer',
+    };
+  }],
+  ['POST', '/api/auth/forgot-password', ({ body }) => {
+    const user = db.getUsers().find((u) => u.email.toLowerCase() === (body.email || '').toLowerCase());
+    const generic = { message: 'If an account with that email exists, a reset link has been sent.' };
+    if (!user) return generic;
+    const reset_token = uid();
+    const users = db.getUsers();
+    const idx = users.findIndex((u) => u.id === user.id);
+    users[idx].reset_token = reset_token;
+    db.setUsers(users);
+    // Demo helper: return the token so the reset flow works without email.
+    return { ...generic, reset_token };
+  }],
+  ['POST', '/api/auth/reset-password', ({ body }) => {
+    const users = db.getUsers();
+    const idx = users.findIndex((u) => u.reset_token && u.reset_token === body.token);
+    if (idx === -1) throw new ApiError(400, 'Invalid or expired reset token');
+    if (!body.new_password || body.new_password.length < 6) {
+      throw new ApiError(400, 'Password must be at least 6 characters');
+    }
+    users[idx].password = body.new_password;
+    delete users[idx].reset_token;
+    db.setUsers(users);
+    return { message: 'Password reset successfully. You can now log in.' };
+  }],
+  ['POST', '/api/auth/verify-email', ({ body }) => {
+    const users = db.getUsers();
+    const idx = users.findIndex((u) => u.verification_token && u.verification_token === body.token);
+    if (idx === -1) {
+      // Idempotent: an already-verified user (token cleared) shouldn't error hard.
+      throw new ApiError(400, 'Invalid or expired verification token');
+    }
+    users[idx].email_verified = true;
+    delete users[idx].verification_token;
+    db.setUsers(users);
+    return { message: 'Email verified successfully' };
+  }],
+  ['POST', '/api/auth/resend-verification', () => {
+    const user = requireAuth();
+    if (user.email_verified) return { message: 'Email already verified' };
+    const verification_token = uid();
+    const users = db.getUsers();
+    const idx = users.findIndex((u) => u.id === user.id);
+    users[idx].verification_token = verification_token;
+    db.setUsers(users);
+    return { message: 'Verification email sent', verification_token };
+  }],
+  ['PUT', '/api/auth/change-password', ({ body }) => {
+    const user = requireAuth();
+    if (user.password !== body.current_password) throw new ApiError(400, 'Current password is incorrect');
+    if (!body.new_password || body.new_password.length < 6) {
+      throw new ApiError(400, 'Password must be at least 6 characters');
+    }
+    if (body.new_password === body.current_password) {
+      throw new ApiError(400, 'New password must be different from the current password');
+    }
+    const users = db.getUsers();
+    const idx = users.findIndex((u) => u.id === user.id);
+    users[idx].password = body.new_password;
+    db.setUsers(users);
+    return { message: 'Password changed successfully' };
   }],
   ['GET', '/api/auth/me', () => {
     const u = publicUser(requireAuth());

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 import random
+import secrets
 import string
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -19,6 +20,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def generate_otp(length: int = 4) -> str:
     """Generate a numeric OTP."""
     return "".join(random.choices(string.digits, k=length))
+
+
+def generate_secure_token(nbytes: int = 32) -> str:
+    """Generate a URL-safe random token for password reset / email verification."""
+    return secrets.token_urlsafe(nbytes)
 
 
 def calculate_cart_totals(items: list) -> dict:
