@@ -1,0 +1,81 @@
+.auth-page {
+    min-height: calc(100vh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--green-50), var(--white), var(--green-50));
+    padding: 40px 24px;
+  }
+  .auth-card {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--gray-200);
+    box-shadow: var(--shadow-xl);
+    width: 100%;
+    max-width: 440px;
+    padding: 40px 36px;
+    animation: fadeInUp 0.5s ease-out;
+  }
+  .auth-header { text-align: center; margin-bottom: 32px; }
+  .auth-logo { height: 64px; margin: 0 auto 16px; }
+  .auth-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--green-900);
+    margin-bottom: 4px;
+  }
+  .auth-subtitle { font-size: 15px; color: var(--gray-500); }
+  .auth-form { margin-bottom: 24px; }
+  .input-icon-wrap { position: relative; }
+  .input-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-400);
+  }
+  .form-input.has-icon { padding-left: 44px; }
+  .input-icon-right {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-400);
+    transition: var(--transition);
+  }
+  .input-icon-right:hover { color: var(--gray-700); }
+  .auth-footer-text { text-align: center; font-size: 14px; color: var(--gray-500); }
+  .auth-link { color: var(--green-800); font-weight: 600; }
+  .auth-demo {
+    margin: 0 0 20px;
+    padding: 14px 16px;
+    background: var(--green-50);
+    border: 1px dashed var(--green-500);
+    border-radius: var(--radius-lg, 12px);
+    text-align: center;
+  }
+  .auth-demo-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--green-800);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .auth-demo-btns { display: flex; gap: 10px; justify-content: center; }
+  .auth-demo-btn {
+    flex: 1;
+    max-width: 140px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green-800);
+    background: var(--white);
+    border: 1px solid var(--green-500);
+    border-radius: var(--radius-md, 8px);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .auth-demo-btn:hover { background: var(--green-800); color: var(--white); }
+  .auth-link:hover { text-decoration: underline; }

@@ -1,0 +1,39 @@
+.profile-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+  }
+  .profile-avatar-section {
+    text-align: center;
+    padding: 40px 24px 32px;
+    background: linear-gradient(135deg, var(--green-50), var(--green-100));
+  }
+  .profile-avatar-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: var(--green-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    border: 3px solid var(--white);
+    box-shadow: var(--shadow-md);
+  }
+  .profile-avatar-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: var(--transition);
+  }
+  .profile-avatar-large:hover .profile-avatar-overlay { opacity: 1; }
+  .profile-form { padding: 32px; }

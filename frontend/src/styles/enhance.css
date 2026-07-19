@@ -1,0 +1,346 @@
+/* ============================================================
+   Herbal Hub — colourful theme layer + delivery tracker styles
+   Loaded last so it enhances the base white/green theme.
+   ============================================================ */
+:root {
+  --accent-amber: #f59e0b;
+  --accent-teal: #0ea5e9;
+  --accent-purple: #8b5cf6;
+  --accent-pink: #ec4899;
+  --accent-rose: #f43f5e;
+  --accent-lime: #84cc16;
+  --accent-indigo: #6366f1;
+  --grad-hero: linear-gradient(135deg, #e7f8ee 0%, #f4fbff 45%, #fef6f9 100%);
+  --grad-green: linear-gradient(135deg, #2d6a4f 0%, #40916c 60%, #52b788 100%);
+  --grad-warm: linear-gradient(135deg, #f59e0b, #ec4899);
+  --grad-cool: linear-gradient(135deg, #0ea5e9, #6366f1);
+}
+
+/* ---------- Hero ---------- */
+.hero-gradient {
+  background: var(--grad-hero) !important;
+  opacity: 1 !important;
+}
+.hero-badge {
+  background: var(--grad-warm) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 6px 18px -6px rgba(236, 72, 153, 0.6);
+}
+.hero-title-accent {
+  background: var(--grad-green);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero-stat-value {
+  background: var(--grad-cool);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---------- Buttons ---------- */
+.btn-primary {
+  background: var(--grad-green) !important;
+  border: none !important;
+  box-shadow: 0 8px 20px -8px rgba(45, 106, 79, 0.7);
+}
+.btn-primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-2px);
+}
+
+/* ---------- Section titles ---------- */
+.section-title {
+  position: relative;
+  display: inline-block;
+}
+.section-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -8px;
+  width: 56px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--grad-warm);
+}
+
+/* ---------- Feature cards (colourful icons) ---------- */
+.feature-card {
+  border-top: 4px solid transparent;
+  transition: var(--transition);
+}
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-xl);
+}
+.grid-4 > .feature-card:nth-child(4n + 1) { border-top-color: var(--accent-teal); }
+.grid-4 > .feature-card:nth-child(4n + 2) { border-top-color: var(--accent-amber); }
+.grid-4 > .feature-card:nth-child(4n + 3) { border-top-color: var(--accent-purple); }
+.grid-4 > .feature-card:nth-child(4n + 4) { border-top-color: var(--accent-pink); }
+.grid-4 > .feature-card:nth-child(4n + 1) .feature-icon { background: rgba(14, 165, 233, 0.12); color: var(--accent-teal); }
+.grid-4 > .feature-card:nth-child(4n + 2) .feature-icon { background: rgba(245, 158, 11, 0.14); color: var(--accent-amber); }
+.grid-4 > .feature-card:nth-child(4n + 3) .feature-icon { background: rgba(139, 92, 246, 0.14); color: var(--accent-purple); }
+.grid-4 > .feature-card:nth-child(4n + 4) .feature-icon { background: rgba(236, 72, 153, 0.14); color: var(--accent-pink); }
+.feature-icon {
+  border-radius: var(--radius-lg);
+  transition: var(--transition);
+}
+.feature-card:hover .feature-icon { transform: scale(1.1) rotate(-6deg); }
+
+/* ---------- Product cards ---------- */
+.medicine-card, .med-card {
+  transition: var(--transition);
+}
+.medicine-card:hover, .med-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-xl);
+}
+
+/* ---------- CTA ---------- */
+.cta-section {
+  background: var(--grad-green) !important;
+  position: relative;
+  overflow: hidden;
+}
+.cta-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.18), transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(244, 114, 182, 0.35), transparent 45%);
+}
+
+/* ---------- Category labels ---------- */
+.category-card { transition: var(--transition); }
+.category-card:hover { transform: translateY(-6px) scale(1.01); }
+
+/* ============================================================
+   Advanced Delivery Tracking
+   ============================================================ */
+.dt { margin: 8px 0 28px; }
+
+.dt-eta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-radius: var(--radius-lg);
+  color: #fff;
+  background: var(--grad-cool);
+  box-shadow: 0 12px 24px -12px rgba(99, 102, 241, 0.7);
+  margin-bottom: 16px;
+}
+.dt-eta-done { background: var(--grad-green); box-shadow: 0 12px 24px -12px rgba(45, 106, 79, 0.7); }
+.dt-eta-main { display: flex; align-items: center; gap: 14px; }
+.dt-eta-value { display: block; font-size: 20px; font-weight: 700; line-height: 1.2; }
+.dt-eta-sub { display: block; font-size: 13px; opacity: 0.9; }
+.dt-eta-pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+}
+.dt-eta-pulse .dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 rgba(255, 255, 255, 0.7);
+  animation: dtPulse 1.4s infinite;
+}
+@keyframes dtPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+/* Map */
+.live-map {
+  height: 340px;
+  width: 100%;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-md);
+  z-index: 0;
+}
+.map-pin {
+  font-size: 24px;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  border: 2px solid #fff;
+}
+.map-pin.pin-courier {
+  background: var(--grad-cool);
+  animation: dtBob 1.2s ease-in-out infinite;
+}
+.map-pin.pin-store { border-color: var(--accent-amber); }
+.map-pin.pin-home { border-color: var(--green-600); }
+@keyframes dtBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Grid: agent + notifications */
+.dt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+@media (max-width: 760px) { .dt-grid { grid-template-columns: 1fr; } }
+
+.dt-card {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Agent card */
+.dt-agent-head { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+.dt-agent-photo {
+  width: 60px; height: 60px; border-radius: 50%;
+  object-fit: cover; border: 3px solid var(--green-200);
+}
+.dt-agent-name { display: block; font-weight: 700; font-size: 16px; color: var(--gray-900); }
+.dt-agent-role { display: block; font-size: 12px; color: var(--gray-500); }
+.dt-agent-rating {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 13px; font-weight: 600; color: var(--accent-amber); margin-top: 2px;
+}
+.dt-agent-meta { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.dt-agent-meta div {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--gray-600);
+}
+.dt-agent-meta svg { color: var(--green-700); flex-shrink: 0; }
+.dt-call { width: 100%; }
+
+/* Notification feed */
+.dt-feed-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.dt-feed-head h3 { font-size: 16px; }
+.dt-push-on {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 600; color: var(--green-700);
+}
+.dt-feed { display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto; }
+.dt-feed-item {
+  display: flex; gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  border-left: 3px solid var(--gray-300);
+  animation: dtSlideIn 0.35s ease-out;
+}
+@keyframes dtSlideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.dt-feed-item.feed-sms { border-left-color: var(--accent-teal); }
+.dt-feed-item.feed-email { border-left-color: var(--accent-purple); }
+.dt-feed-item.feed-push { border-left-color: var(--accent-pink); }
+.dt-feed-item.feed-status { border-left-color: var(--green-600); }
+.dt-feed-icon {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: #fff; color: var(--gray-600);
+  box-shadow: var(--shadow-sm);
+}
+.feed-sms .dt-feed-icon { color: var(--accent-teal); }
+.feed-email .dt-feed-icon { color: var(--accent-purple); }
+.feed-push .dt-feed-icon { color: var(--accent-pink); }
+.feed-status .dt-feed-icon { color: var(--green-700); }
+.dt-feed-body { flex: 1; min-width: 0; }
+.dt-feed-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dt-feed-title { font-size: 13px; font-weight: 700; color: var(--gray-900); }
+.dt-feed-tag {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--gray-400);
+}
+.dt-feed-text { display: block; font-size: 13px; color: var(--gray-600); margin: 2px 0; }
+.dt-feed-time { font-size: 11px; color: var(--gray-400); }
+
+/* ============================================================
+   Dark green & white theme layer
+   ============================================================ */
+:root {
+  --dark-green: #0f3d2e;
+  --dark-green-2: #14532d;
+  --grad-darkgreen: linear-gradient(135deg, #0f3d2e 0%, #14532d 55%, #1b6b45 100%);
+}
+
+/* Navbar → solid dark green with white text */
+.navbar {
+  background: var(--dark-green) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 20px -8px rgba(0, 0, 0, 0.5);
+}
+.navbar-link { color: rgba(255, 255, 255, 0.82) !important; }
+.navbar-link:hover,
+.navbar-link.active {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+.navbar-icon-btn { color: rgba(255, 255, 255, 0.85) !important; }
+.navbar-icon-btn:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+.navbar .searchbar-compact {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+.navbar .searchbar-input {
+  background: transparent !important;
+  color: #fff !important;
+}
+.navbar .searchbar-input::placeholder { color: rgba(255, 255, 255, 0.7) !important; }
+.navbar .searchbar-icon { color: rgba(255, 255, 255, 0.8) !important; }
+.navbar-avatar { border-color: rgba(255, 255, 255, 0.6) !important; }
+.avatar-initial { background: rgba(255, 255, 255, 0.18) !important; color: #fff !important; }
+
+/* Login/Register buttons in the dark navbar stay readable */
+.navbar .btn-secondary {
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+}
+.navbar .btn-secondary:hover { background: rgba(255, 255, 255, 0.16) !important; }
+.navbar .btn-white { background: #fff !important; color: var(--dark-green) !important; }
+
+/* Primary buttons → deep dark green */
+.btn-primary {
+  background: var(--grad-darkgreen) !important;
+  color: #fff !important;
+}
+.btn-primary:hover { filter: brightness(1.08); box-shadow: 0 10px 26px -10px rgba(15, 61, 46, 0.7); }
+
+/* Dark-green section headings on white */
+.section-title { color: var(--dark-green) !important; }
+
+/* CTA band → rich dark green */
+.cta-section,
+.home-cta {
+  background: var(--grad-darkgreen) !important;
+  color: #fff !important;
+}
+
+/* Footer already dark; deepen to match */
+.footer { background: var(--dark-green) !important; }
+
+/* Delivery ETA banner → dark green + white (was blue/purple) */
+.dt-eta {
+  background: var(--grad-darkgreen) !important;
+  color: #fff !important;
+}

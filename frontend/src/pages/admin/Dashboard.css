@@ -1,0 +1,28 @@
+.admin-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+  }
+  .admin-card-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--green-900);
+    margin-bottom: 20px;
+  }
+  .status-bars { display: flex; flex-direction: column; gap: 12px; }
+  .status-bar-row { display: flex; align-items: center; gap: 12px; }
+  .status-bar-track {
+    flex: 1;
+    height: 10px;
+    background: var(--gray-100);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .status-bar-fill {
+    height: 100%;
+    background: var(--green-600);
+    border-radius: 5px;
+    transition: width 0.5s ease;
+  }
