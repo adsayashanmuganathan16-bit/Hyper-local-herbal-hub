@@ -1,15 +1,50 @@
 # Python
 venv/
 backend/venv/
+.venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Node
 node_modules/
+coverage/
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # Environment
 .env
+.env.*
+!.env.example
+backend/.env
+!backend/.env.example
+frontend/.env
+!frontend/.env.example
+
+# Runtime uploads
+backend/uploads/
 
 # Build
 dist/
 build/
+
+# Editors, operating systems, and local backup files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.save
+*.bak
+*.tmp
+*.log
+*~
