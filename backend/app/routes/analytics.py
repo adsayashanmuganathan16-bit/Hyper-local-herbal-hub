@@ -1,3 +1,4 @@
+from app.utils.time import utc_now
 from fastapi import APIRouter, Depends, Query
 from datetime import datetime, timedelta
 from app.database import get_db
@@ -16,7 +17,7 @@ async def get_sales_analytics(
 
     period_map = {"7d": 7, "30d": 30, "90d": 90, "1y": 365}
     days = period_map.get(period, 30)
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = utc_now() - timedelta(days=days)
 
     # Daily sales
     pipeline = [
@@ -66,7 +67,7 @@ async def get_user_analytics(current_user: dict = Depends(require_admin)):
     db = get_db()
 
     # User growth over last 6 months
-    six_months_ago = datetime.utcnow() - timedelta(days=180)
+    six_months_ago = utc_now() - timedelta(days=180)
     pipeline = [
         {"$match": {"created_at": {"$gte": six_months_ago}}},
         {"$group": {

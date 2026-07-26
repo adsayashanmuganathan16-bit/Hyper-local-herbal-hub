@@ -9,6 +9,18 @@ class EmailService:
 
     async def send_email(self, to_email: str, subject: str, html_body: str) -> bool:
         """Send an HTML email."""
+        placeholder_values = {
+            "",
+            "your_smtp_username",
+            "your_smtp_password",
+            "your_email@gmail.com",
+            "change-me",
+        }
+        if (
+            settings.SMTP_USER.strip().lower() in placeholder_values
+            or settings.SMTP_PASSWORD.strip().lower() in placeholder_values
+        ):
+            return False
         try:
             message = MIMEMultipart("alternative")
             message["Subject"] = subject
@@ -35,7 +47,7 @@ class EmailService:
             <div style="padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px;">
                 <p>Dear Customer,</p>
                 <p>Your order <strong>#{order_id}</strong> has been placed successfully!</p>
-                <p><strong>Total Amount:</strong> ₹{amount:.2f}</p>
+                <p><strong>Total Amount:</strong> Rs. {amount:,.2f} LKR</p>
                 <p>We'll notify you when your order is shipped.</p>
                 <p style="color: #2d6a4f; margin-top: 20px;">Pure Herbs, Pure Life 🌱</p>
             </div>
@@ -100,6 +112,20 @@ class EmailService:
         </div>
         """
         return await self.send_email(to_email, f"Prescription {status.title()}", html)
+
+    async def send_financial_notification(self, to_email: str, title: str, message: str) -> bool:
+        html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #2d6a4f; color: white; padding: 20px; text-align: center;">
+                <h2>🌿 {title}</h2>
+            </div>
+            <div style="padding: 20px; border: 1px solid #ddd; border-top: none;">
+                <p>{message}</p>
+                <p><a href="{settings.FRONTEND_URL}/seller/earnings">View seller earnings and payouts</a></p>
+            </div>
+        </div>
+        """
+        return await self.send_email(to_email, f"Herbal Hub - {title}", html)
 
 
 email_service = EmailService()

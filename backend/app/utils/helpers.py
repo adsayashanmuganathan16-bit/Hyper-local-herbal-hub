@@ -1,20 +1,23 @@
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
+import bcrypt
 import random
 import secrets
 import string
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+    except (TypeError, ValueError):
+        return False
 
 
 def generate_otp(length: int = 4) -> str:
@@ -55,6 +58,14 @@ def serialize_doc(doc: dict) -> dict:
         return None
     serialized = {}
     for key, value in doc.items():
+        if key in {
+            "password",
+            "reset_token",
+            "reset_token_expires",
+            "verification_token",
+            "verification_token_expires",
+        }:
+            continue
         if key == "_id":
             serialized["id"] = str(value)
         elif isinstance(value, datetime):

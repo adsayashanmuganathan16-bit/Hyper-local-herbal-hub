@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class ReviewCreate(BaseModel):
@@ -12,6 +12,7 @@ class ReviewCreate(BaseModel):
 
 
 class ReviewInDB(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     id: str = Field(alias="_id")
     user_id: str
     user_name: str
@@ -20,8 +21,4 @@ class ReviewInDB(BaseModel):
     rating: int
     title: Optional[str] = None
     comment: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        populate_by_name = True
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

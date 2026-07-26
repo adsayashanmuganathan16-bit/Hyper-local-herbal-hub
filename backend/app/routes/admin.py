@@ -1,5 +1,7 @@
+from app.utils.time import utc_now
 from fastapi import APIRouter, HTTPException, Query, Depends
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from app.database import get_db
 from app.middleware.auth_middleware import require_admin
 from app.utils.helpers import serialize_doc, paginate
@@ -25,9 +27,18 @@ async def get_dashboard_stats(current_user: dict = Depends(require_admin)):
     revenue_result = await db.orders.aggregate(pipeline).to_list(length=1)
     total_revenue = revenue_result[0]["total_revenue"] if revenue_result else 0
 
-    # Today's orders
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    # Sri Lankan calendar-day boundary converted to UTC for MongoDB querying.
+    colombo = ZoneInfo("Asia/Colombo")
+    local_now = datetime.now(colombo)
+    today = local_now.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc).replace(tzinfo=None)
     todays_orders = await db.orders.count_documents({"created_at": {"$gte": today}})
+
+    payouts = await db.payouts.find({}).to_list(length=None)
+    pending_payouts = sum(float(p.get("net_amount", 0)) for p in payouts if p.get("status") != "PAID")
+    completed_payouts = sum(float(p.get("net_amount", 0)) for p in payouts if p.get("status") == "PAID")
+    total_commission = sum(float(p.get("commission_amount", 0)) for p in payouts)
+    delivery_pipeline = [{"$match": {"payment_status": "completed"}}, {"$group": {"_id": None, "total": {"$sum": "$delivery_charge"}}}]
+    delivery_result = await db.orders.aggregate(delivery_pipeline).to_list(length=1)
 
     # Recent orders
     cursor = db.orders.find().sort([("created_at", -1)]).limit(5)
@@ -46,6 +57,10 @@ async def get_dashboard_stats(current_user: dict = Depends(require_admin)):
         "total_revenue": round(total_revenue, 2),
         "todays_orders": todays_orders,
         "pending_prescriptions": pending_prescriptions,
+        "pending_payouts": round(pending_payouts, 2),
+        "completed_payouts": round(completed_payouts, 2),
+        "total_commission": round(total_commission, 2),
+        "delivery_charges": round(delivery_result[0]["total"], 2) if delivery_result else 0,
         "orders_by_status": orders_by_status,
         "recent_orders": recent_orders,
     }
@@ -91,6 +106,27 @@ async def toggle_user_active(user_id: str, current_user: dict = Depends(require_
     new_status = not user.get("is_active", True)
     await db.users.update_one(
         {"_id": ObjectId(user_id)},
-        {"$set": {"is_active": new_status, "updated_at": datetime.utcnow()}},
+        {"$set": {"is_active": new_status, "updated_at": utc_now()}},
     )
     return {"message": f"User {'activated' if new_status else 'deactivated'}"}
+
+
+@router.delete("/users/{user_id}")
+async def remove_user(user_id: str, current_user: dict = Depends(require_admin)):
+    """Soft-remove a customer or seller while preserving orders and financial records."""
+    from bson import ObjectId
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(404, "User not found")
+    db = get_db()
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(404, "User not found")
+    if user.get("role") == "admin" or str(user["_id"]) == current_user["_id"]:
+        raise HTTPException(403, "Admin accounts cannot be removed here")
+    now = utc_now()
+    await db.users.update_one({"_id": user["_id"]}, {"$set": {
+        "is_active": False, "removed_at": now, "removed_by": current_user["_id"], "updated_at": now,
+    }})
+    if user.get("role") == "seller":
+        await db.sellers.update_one({"user_id": user_id}, {"$set": {"approval_status": "REJECTED", "updated_at": now}})
+    return {"message": "User removed successfully"}
