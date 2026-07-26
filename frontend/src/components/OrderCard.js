@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiChevronRight } from 'react-icons/fi';
 import { formatCurrency, formatDateTime, formatStatus, getStatusColor } from '../utils/helpers';
+import ReviewStars from './ReviewStars';
+import ReviewForm from './ReviewForm';
 
-export default function OrderCard({ order }) {
+export default function OrderCard({ order, reviews = [], onReviewSubmitted }) {
+  const [reviewingItem, setReviewingItem] = useState(null);
   const statusSteps = ['placed', 'confirmed', 'packed', 'shipped', 'out_for_delivery', 'delivered'];
   const currentStepIndex = statusSteps.indexOf(order.status);
   const isCancelled = order.status === 'cancelled' || order.status === 'returned';
@@ -30,13 +33,33 @@ export default function OrderCard({ order }) {
       )}
 
       <div className="order-card-items">
-        {order.items?.slice(0, 3).map((item, i) => (
+        {order.items?.map((item, i) => {
+          const review = reviews.find((entry) => entry.medicine_id === item.medicine_id);
+          return (
           <div key={i} className="order-card-item-row">
-            <span className="text-sm">{item.name} × {item.quantity}</span>
+            <div>
+              <span className="text-sm">{item.name} × {item.quantity}</span>
+              {order.status === 'delivered' && (
+                review
+                  ? <span className="order-review-complete"><ReviewStars rating={review.rating} size={13} /> Reviewed</span>
+                  : <button className="order-review-link" onClick={() => setReviewingItem(item)}>Rate &amp; review</button>
+              )}
+            </div>
             <span className="text-sm font-semibold">{formatCurrency(item.price * item.quantity)}</span>
           </div>
-        ))}
-        {order.items?.length > 3 && <p className="text-gray text-xs">+{order.items.length - 3} more items</p>}
+          );
+        })}
+        {reviewingItem && (
+          <ReviewForm
+            orderId={order.id}
+            item={reviewingItem}
+            onCancel={() => setReviewingItem(null)}
+            onSubmitted={(review) => {
+              onReviewSubmitted(review);
+              setReviewingItem(null);
+            }}
+          />
+        )}
       </div>
 
       <div className="order-card-footer">

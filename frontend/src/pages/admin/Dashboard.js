@@ -4,8 +4,10 @@ import { FiUsers, FiPackage, FiDollarSign, FiFileText, FiTrendingUp, FiArrowRigh
 import { adminApi } from '../../api/adminApi';
 import { formatCurrency, formatDateTime, formatStatus, getStatusColor } from '../../utils/helpers';
 import Loading from '../../components/Loading';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,24 +26,29 @@ export default function AdminDashboard() {
     { label: "Today's Orders", value: stats.todays_orders, icon: <FiTrendingUp size={22} />, bg: '#fef3c7', color: '#92400e' },
     { label: 'Total Orders', value: stats.total_orders, icon: <FiPackage size={22} />, bg: '#f3e8ff', color: '#6b21a8' },
     { label: 'Pending Rx', value: stats.pending_prescriptions, icon: <FiFileText size={22} />, bg: '#fef2f2', color: '#991b1b' },
+    { label: 'Admin Commission', value: formatCurrency(stats.total_commission), icon: <FiDollarSign size={22} />, bg: '#dcfce7', color: '#166534' },
+    { label: 'Delivery Charges', value: formatCurrency(stats.delivery_charges), icon: <FiTrendingUp size={22} />, bg: '#dbeafe', color: '#1e40af' },
+    { label: 'Pending Payouts', value: formatCurrency(stats.pending_payouts), icon: <FiFileText size={22} />, bg: '#fef3c7', color: '#92400e' },
+    { label: 'Completed Payouts', value: formatCurrency(stats.completed_payouts), icon: <FiDollarSign size={22} />, bg: '#e8f5ec', color: '#237044' },
   ];
 
   return (
     <div className="page-wrapper">
-      <section className="section" style={{ paddingTop: '32px' }}>
+      <section className="dashboard-page">
         <div className="container">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="section-title" style={{ marginBottom: 4 }}>Admin Dashboard</h1>
-              <p className="text-gray">Overview of your Herbal Hub platform</p>
+          <div className="dashboard-header">
+            <div className="dashboard-header-copy">
+              <span className="dashboard-eyebrow">Herbal Hub control centre</span>
+              <h1 className="dashboard-title">Welcome, {user?.name || 'Admin'}</h1>
+              <p className="dashboard-subtitle">A clear view of customers, orders, products and platform growth.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="dashboard-header-actions">
               <Link to="/admin/medicines" className="btn btn-secondary btn-sm">Manage Products</Link>
               <Link to="/admin/orders" className="btn btn-primary btn-sm">Manage Orders</Link>
             </div>
           </div>
 
-          <div className="grid-3" style={{ marginBottom: 40 }}>
+          <div className="dashboard-stats">
             {statCards.map((s, i) => (
               <div key={i} className="stat-card">
                 <div className="stat-icon" style={{ background: s.bg, color: s.color }}>{s.icon}</div>

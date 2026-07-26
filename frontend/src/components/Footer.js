@@ -1,10 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiMapPin, FiPhone, FiMail, FiHeart } from 'react-icons/fi';
+import { toast } from 'react-toastify';
+import { newsletterApi } from '../api/newsletterApi';
 
 const LOGO_URL = process.env.PUBLIC_URL + '/logo.png';
 
 export default function Footer() {
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubscribe = async (event) => {
+    event.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return toast.error('Please enter your email address');
+
+    setSubmitting(true);
+    try {
+      const { data } = await newsletterApi.subscribe(normalizedEmail);
+      if (data.subscribed) toast.success(data.message);
+      else toast.info(data.message);
+      setEmail('');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Could not subscribe. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <footer className="footer">
       <div className="container">
@@ -12,27 +35,32 @@ export default function Footer() {
 
           {/* Brand */}
           <div className="footer-brand">
-            <img src={LOGO_URL} alt="Herbal Hub" className="footer-logo" />
+            <Link to="/" className="footer-logo-link" aria-label="Herbal Hub home">
+              <img src={LOGO_URL} alt="Herbal Hub logo" className="footer-logo" />
+              <span>Herbal Hub</span>
+            </Link>
 
             <p className="footer-tagline">
               Pure Herbs, Local Care, Better Life. Your trusted hyper-local herbal medicine delivery platform.
             </p>
 
+            <p className="footer-owner">Project owner · <strong>Adsaya Shanmuganathan</strong></p>
+
             <div className="footer-contact">
               <div className="footer-contact-item">
                 <FiMapPin size={16} />
-                <span>123 Herbal Lane, Green City, India</span>
+                <span>Uruththirapuram, Kilinochchi, Sri Lanka</span>
               </div>
 
-              <div className="footer-contact-item">
+              <a className="footer-contact-item" href="tel:+94761132154">
                 <FiPhone size={16} />
-                <span>+91 98765 43210</span>
-              </div>
+                <span>+94 76 113 2154</span>
+              </a>
 
-              <div className="footer-contact-item">
+              <a className="footer-contact-item" href="mailto:adsayashanmuganathan16@gmail.com">
                 <FiMail size={16} />
-                <span>care@herbalhub.in</span>
-              </div>
+                <span>adsayashanmuganathan16@gmail.com</span>
+              </a>
             </div>
           </div>
 
@@ -77,16 +105,8 @@ export default function Footer() {
           <div className="footer-col">
             <h4 className="footer-col-title">Customer Support</h4>
 
-            <Link to="/about" className="footer-link">
-              About Us
-            </Link>
-
             <Link to="/contact" className="footer-link">
-              Contact
-            </Link>
-
-            <Link to="/faq" className="footer-link">
-              FAQ
+              Contact Us
             </Link>
 
             <Link to="/privacy" className="footer-link">
@@ -104,15 +124,19 @@ export default function Footer() {
 
             <p>Subscribe for herbal tips and exclusive offers.</p>
 
-            <form className="newsletter-form">
+            <form className="newsletter-form" onSubmit={handleSubscribe}>
               <input
                 type="email"
                 placeholder="Enter your email"
                 className="newsletter-input"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                aria-label="Email address for newsletter"
+                required
               />
 
-              <button type="submit" className="newsletter-btn">
-                Subscribe
+              <button type="submit" className="newsletter-btn" disabled={submitting}>
+                {submitting ? 'Subscribing…' : 'Subscribe'}
               </button>
             </form>
           </div>
@@ -130,6 +154,9 @@ export default function Footer() {
               }}
             />{' '}
             for healthy living.
+          </p>
+          <p className="footer-developer">
+            Designed &amp; developed by <strong>Adsaya Shanmuganatan</strong>
           </p>
         </div>
       </div>

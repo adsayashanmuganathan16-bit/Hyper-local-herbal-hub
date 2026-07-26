@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiShoppingCart, FiAlertCircle } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
@@ -11,22 +11,26 @@ const PLACEHOLDER_IMG = 'https://picsum.photos/seed/herb-placeholder/400/400.jpg
 
 export default function MedicineCard({ medicine }) {
   const { addToCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isCustomer } = useAuth();
+  const [adding, setAdding] = useState(false);
 
   const image = medicine.images?.[0] || PLACEHOLDER_IMG;
   const hasDiscount = medicine.discount_price && medicine.discount_price < medicine.price;
   const discountPercent = getDiscountPercent(medicine.price, medicine.discount_price);
   const outOfStock = medicine.stock <= 0;
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (!isAuthenticated) {
       toast.info('Please login to add items to cart');
       return;
     }
+    if (!isCustomer) { toast.info('Only customer accounts can add products to a cart'); return; }
     if (outOfStock) return;
-    addToCart(medicine);
+    setAdding(true);
+    await addToCart(medicine);
+    setAdding(false);
   };
 
   return (
@@ -44,6 +48,7 @@ export default function MedicineCard({ medicine }) {
       <div className="med-card-body">
         <span className="med-card-category">{medicine.category?.replace(/_/g, ' ')}</span>
         <h3 className="med-card-name">{medicine.name}</h3>
+        {medicine.seller?.name && <p className="text-xs text-green">Sold by {medicine.seller.name}</p>}
         <p className="med-card-desc">{truncateText(medicine.description, 60)}</p>
         <div className="med-card-rating">
           <ReviewStars rating={medicine.average_rating} size={14} />
@@ -63,7 +68,8 @@ export default function MedicineCard({ medicine }) {
           <button
             className={`med-card-add ${outOfStock ? 'disabled' : ''}`}
             onClick={handleAdd}
-            disabled={outOfStock}
+            disabled={outOfStock || adding}
+            aria-label={adding ? `Adding ${medicine.name}` : `Add ${medicine.name} to cart`}
           >
             <FiShoppingCart size={16} />
           </button>

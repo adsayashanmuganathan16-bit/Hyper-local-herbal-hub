@@ -9,10 +9,11 @@ const KEYS = {
   reviews: 'herbal_hub_reviews',
   prescriptions: 'herbal_hub_prescriptions',
   notifications: 'herbal_hub_notifications',
+  subscribers: 'herbal_hub_subscribers',
   seedVersion: 'herbal_hub_seed_version',
 };
 
-const SEED_VERSION = '5';
+const SEED_VERSION = '7';
 
 export const CATEGORIES = [
   'Ayurvedic',
@@ -290,6 +291,7 @@ function seedMedicines() {
       price: m.price,
       discount_price: m.discount_price,
       stock: m.stock,
+      weight_grams: 75 + (i % 6) * 25,
       manufacturer: m.manufacturer,
       requires_prescription: m.requires_prescription,
       dosage: m.dosage,
@@ -319,6 +321,20 @@ function seedUsers() {
       profile_image: null,
       address: {},
       created_at: daysAgo(120),
+    },
+    {
+      id: 'seller-demo',
+      name: 'Green Roots Naturals',
+      email: 'seller@herbalhub.in',
+      phone: '+91 90000 00005',
+      password: 'seller123',
+      role: 'seller',
+      business_name: 'Green Roots Naturals',
+      is_active: true,
+      email_verified: true,
+      profile_image: null,
+      address: { city: 'Bengaluru', state: 'Karnataka' },
+      created_at: daysAgo(75),
     },
     {
       id: uid(),
@@ -397,10 +413,12 @@ function seedOrders(medicines, users) {
     price: m.discount_price || m.price,
     quantity: qty,
     image: m.images[0],
+    weight_grams: m.weight_grams,
   });
   const makeOrder = (user, lines, status, paymentMethod, paymentStatus, days) => {
     const total = lines.reduce((s, l) => s + l.price * l.quantity, 0);
-    const delivery_charge = total >= 500 ? 0 : 49;
+    const parcel_weight = lines.reduce((sum, item) => sum + item.weight_grams * item.quantity, 0);
+    const delivery_charge = parcel_weight <= 250 ? 180 : parcel_weight <= 500 ? 250 : parcel_weight <= 1000 ? 350 : 500;
     return {
       id: uid(),
       user_id: user.id,
@@ -408,6 +426,8 @@ function seedOrders(medicines, users) {
       items: lines,
       total_amount: total,
       delivery_charge,
+      shipping_fee: delivery_charge,
+      parcel_weight,
       discount: 0,
       final_amount: total + delivery_charge,
       address: {
@@ -422,6 +442,11 @@ function seedOrders(medicines, users) {
       payment_method: paymentMethod,
       payment_status: paymentStatus,
       status,
+      courier_service: ['delivered', 'out_for_delivery'].includes(status) ? 'Sri Lanka Post' : null,
+      tracking_number: ['delivered', 'out_for_delivery'].includes(status) ? `SLPOST${uid().slice(0, 8).toUpperCase()}` : null,
+      shipping_date: ['delivered', 'out_for_delivery'].includes(status) ? daysAgo(Math.max(0, days - 1)) : null,
+      delivery_status: status === 'delivered' ? 'delivered' : status === 'out_for_delivery' ? 'in_transit' : status === 'confirmed' ? 'accepted' : 'pending',
+      last_status_updated: daysAgo(Math.max(0, days - 1)),
       created_at: daysAgo(days),
     };
   };
@@ -513,6 +538,10 @@ function ensureSeeded() {
   }
   const medicines = seedMedicines();
   const users = seedUsers();
+  medicines.forEach((medicine, index) => {
+    medicine.seller_id = index < 12 ? 'seller-demo' : null;
+    medicine.seller_name = index < 12 ? 'Green Roots Naturals' : 'Herbal Hub';
+  });
   const reviews = seedReviews(medicines, users);
   const orders = seedOrders(medicines, users);
   const notifications = seedNotifications(users, orders);
@@ -545,6 +574,8 @@ export const db = {
   setPrescriptions: (v) => save(KEYS.prescriptions, v),
   getNotifications: () => load(KEYS.notifications, []),
   setNotifications: (v) => save(KEYS.notifications, v),
+  getSubscribers: () => load(KEYS.subscribers, []),
+  setSubscribers: (v) => save(KEYS.subscribers, v),
   reset: () => {
     Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
     ensureSeeded();

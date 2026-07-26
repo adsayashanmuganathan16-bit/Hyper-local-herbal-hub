@@ -2,7 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiSearch, FiX } from 'react-icons/fi';
 
-export default function SearchBar({ compact }) {
+export default function SearchBar({
+  compact,
+  placeholder = 'Search for herbal medicines, supplements, oils...',
+}) {
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const inputRef = useRef(null);
@@ -29,7 +32,7 @@ export default function SearchBar({ compact }) {
         <input
           ref={inputRef}
           type="text"
-          placeholder="Search herbs..."
+          placeholder={placeholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setFocused(true)}
@@ -45,7 +48,7 @@ export default function SearchBar({ compact }) {
       <input
         ref={inputRef}
         type="text"
-        placeholder="Search for herbal medicines, supplements, oils..."
+        placeholder={placeholder}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setFocused(true)}

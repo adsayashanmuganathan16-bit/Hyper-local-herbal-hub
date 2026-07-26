@@ -6,6 +6,9 @@
   .main-content {
     flex: 1;
     padding-top: 80px;
+    background:
+      radial-gradient(circle at 0 20%, rgba(180,207,189,.16), transparent 28rem),
+      #fcfdfb;
   }
   
   /* Page wrapper for consistent spacing */
@@ -270,3 +273,5 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
+.pin-drop-marker { width:38px; height:38px; display:grid; place-items:center; border-radius:50% 50% 50% 0; transform:rotate(-45deg); background:#176b45; color:white; border:3px solid white; box-shadow:0 3px 12px rgba(0,0,0,.35); font-size:18px; }
+.pin-drop-marker::first-letter { transform:rotate(45deg); }

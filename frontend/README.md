@@ -21,6 +21,7 @@ load. Use these accounts (or click the shortcut buttons on the login page):
 | -------- | --------------------- | --------- |
 | Admin    | `admin@herbalhub.in`  | `admin123`|
 | Customer | `demo@herbalhub.in`   | `demo123` |
+| Seller   | `seller@herbalhub.in` | `seller123` |
 
 You can also register a new customer account from the Register page.
 

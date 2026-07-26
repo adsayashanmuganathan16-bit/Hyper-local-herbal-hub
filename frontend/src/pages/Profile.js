@@ -48,7 +48,7 @@ export default function Profile() {
       updateUser(data.user);
       toast.success('Profile updated');
     } catch (err) {
-      toast.error('Update failed');
+      toast.error(err.response?.data?.detail || 'Update failed');
     } finally {
       setSaving(false);
     }

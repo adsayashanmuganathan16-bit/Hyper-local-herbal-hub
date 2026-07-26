@@ -1,0 +1,4 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+export default function CustomerDashboard(){const {user}=useAuth();return <div className="page-wrapper"><section className="section"><div className="container"><h1 className="section-title">Welcome, {user?.name}</h1><p className="text-gray mb-6">Shop herbal products and follow your local deliveries.</p><div className="dashboard-grid"><Link className="admin-card" to="/shop"><h3>Shop Products</h3><p>Browse Herbal Hub medicines.</p></Link><Link className="admin-card" to="/orders"><h3>My Orders</h3><p>View orders and live delivery tracking.</p></Link><Link className="admin-card" to="/prescriptions"><h3>Prescriptions</h3><p>Manage approved prescriptions.</p></Link></div></div></section></div>}

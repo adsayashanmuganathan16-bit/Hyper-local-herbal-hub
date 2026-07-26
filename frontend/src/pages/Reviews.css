@@ -1,0 +1,31 @@
+.review-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.review-summary div {
+  padding: 18px 22px;
+  border: 1px solid var(--green-200);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+}
+.review-summary strong {
+  display: block;
+  color: var(--green-900);
+  font-size: 28px;
+  line-height: 1.1;
+}
+.review-summary span { color: var(--gray-500); font-size: 13px; }
+.review-management-list { padding: 0; overflow: hidden; }
+.management-review { padding: 22px 24px; border-bottom: 1px solid var(--gray-100); }
+.management-review:last-child { border-bottom: 0; }
+.management-review-top { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.management-review-top h3 { color: var(--green-900); font-size: 17px; }
+.management-review-top span, .management-review small { color: var(--gray-500); font-size: 12px; }
+.management-review h4 { margin-bottom: 5px; font-size: 14px; }
+.management-review p { margin-bottom: 9px; color: var(--gray-600); font-size: 14px; line-height: 1.65; }
+@media (max-width: 560px) {
+  .review-summary { grid-template-columns: 1fr 1fr; }
+  .management-review-top { flex-direction: column; }
+}

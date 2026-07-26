@@ -4,24 +4,27 @@ import { medicineApi } from '../../api/medicineApi';
 import { formatCurrency, formatStatus, truncateText } from '../../utils/helpers';
 import { toast } from 'react-toastify';
 import Loading from '../../components/Loading';
+import { sellerApi } from '../../api/sellerApi';
 
-export default function ManageMedicines() {
+export default function ManageMedicines({ sellerMode = false }) {
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ name: '', description: '', category: 'Ayurvedic', price: '', discount_price: '', stock: '', manufacturer: '', requires_prescription: false, dosage: '', benefits: '', ingredients: '' });
+  const [form, setForm] = useState({ name: '', description: '', category: 'Ayurvedic', price: '', discount_price: '', stock: '', weight_grams: '', manufacturer: '', requires_prescription: false, dosage: '', benefits: '', ingredients: '' });
 
   const fetchMedicines = async () => {
     try {
-      const { data } = await medicineApi.search({ q: search, page: 1, page_size: 50 });
+      const { data } = sellerMode
+        ? await sellerApi.getProducts({ q: search })
+        : await medicineApi.search({ q: search, page: 1, page_size: 50 });
       setMedicines(data.items || []);
     } catch { setMedicines([]); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchMedicines(); }, [search]);
+  useEffect(() => { fetchMedicines(); }, [search, sellerMode]);
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -35,6 +38,7 @@ export default function ManageMedicines() {
       price: parseFloat(form.price),
       discount_price: form.discount_price ? parseFloat(form.discount_price) : null,
       stock: parseInt(form.stock),
+      weight_grams: parseInt(form.weight_grams),
       benefits: form.benefits ? form.benefits.split(',').map((s) => s.trim()) : [],
       ingredients: form.ingredients ? form.ingredients.split(',').map((s) => s.trim()) : [],
     };
@@ -59,6 +63,7 @@ export default function ManageMedicines() {
     setForm({
       name: med.name, description: med.description, category: med.category,
       price: med.price, discount_price: med.discount_price || '', stock: med.stock,
+      weight_grams: med.weight_grams || '',
       manufacturer: med.manufacturer, requires_prescription: med.requires_prescription,
       dosage: med.dosage || '', benefits: med.benefits?.join(', ') || '', ingredients: med.ingredients?.join(', ') || '',
     });
@@ -75,14 +80,17 @@ export default function ManageMedicines() {
     } catch { toast.error('Delete failed'); }
   };
 
-  const resetForm = () => setForm({ name: '', description: '', category: 'Ayurvedic', price: '', discount_price: '', stock: '', manufacturer: '', requires_prescription: false, dosage: '', benefits: '', ingredients: '' });
+  const resetForm = () => setForm({ name: '', description: '', category: 'Ayurvedic', price: '', discount_price: '', stock: '', weight_grams: '', manufacturer: '', requires_prescription: false, dosage: '', benefits: '', ingredients: '' });
 
   return (
     <div className="page-wrapper">
       <section className="section" style={{ paddingTop: '32px' }}>
         <div className="container">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="section-title" style={{ marginBottom: 0 }}>Manage Medicines</h1>
+            <div>
+              <h1 className="section-title" style={{ marginBottom: 4 }}>{sellerMode ? 'My Products' : 'Manage Medicines'}</h1>
+              {sellerMode && <p className="text-gray">Add products and manage your inventory</p>}
+            </div>
             <button className="btn btn-primary btn-sm" onClick={() => { resetForm(); setEditId(null); setShowModal(true); }}>
               <FiPlus size={14} /> Add Product
             </button>
@@ -100,7 +108,7 @@ export default function ManageMedicines() {
               <div style={{ overflowX: 'auto' }}>
                 <table className="data-table">
                   <thead>
-                    <tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Rating</th><th>Actions</th></tr>
+                    <tr><th>Product</th><th>Category</th><th>Price</th><th>Weight</th><th>Stock</th><th>Rating</th><th>Actions</th></tr>
                   </thead>
                   <tbody>
                     {medicines.map((med) => (
@@ -116,6 +124,7 @@ export default function ManageMedicines() {
                         </td>
                         <td className="text-sm">{med.category?.replace(/_/g, ' ')}</td>
                         <td className="font-semibold text-sm">{formatCurrency(med.discount_price || med.price)}</td>
+                        <td className="text-sm">{med.weight_grams || '—'} g</td>
                         <td><span className={`badge ${med.stock > 0 ? 'badge-green' : 'badge-red'}`}>{med.stock}</span></td>
                         <td className="text-sm">{med.average_rating} ⭐</td>
                         <td>
@@ -151,10 +160,11 @@ export default function ManageMedicines() {
                       </div>
                     </div>
                     <div className="form-group"><label className="form-label">Description *</label><textarea name="description" className="form-input" rows={3} value={form.description} onChange={handleFormChange} required /></div>
-                    <div className="grid-3">
+                    <div className="grid-2">
                       <div className="form-group"><label className="form-label">Price *</label><input type="number" name="price" className="form-input" value={form.price} onChange={handleFormChange} step="0.01" required /></div>
                       <div className="form-group"><label className="form-label">Discount Price</label><input type="number" name="discount_price" className="form-input" value={form.discount_price} onChange={handleFormChange} step="0.01" /></div>
                       <div className="form-group"><label className="form-label">Stock *</label><input type="number" name="stock" className="form-input" value={form.stock} onChange={handleFormChange} required /></div>
+                      <div className="form-group"><label className="form-label">Weight (grams) *</label><input type="number" name="weight_grams" className="form-input" value={form.weight_grams} onChange={handleFormChange} min="1" max="2000" step="1" placeholder="e.g. 150" required /></div>
                     </div>
                     <div className="grid-2">
                       <div className="form-group"><label className="form-label">Manufacturer *</label><input name="manufacturer" className="form-input" value={form.manufacturer} onChange={handleFormChange} required /></div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiSearch, FiUserCheck, FiUserX } from 'react-icons/fi';
+import { FiSearch, FiTrash2, FiUserCheck, FiUserX } from 'react-icons/fi';
 import { adminApi } from '../../api/adminApi';
 import { formatDate } from '../../utils/helpers';
 import { toast } from 'react-toastify';
@@ -29,6 +29,15 @@ export default function ManageUsers() {
     } catch { toast.error('Action failed'); }
   };
 
+  const handleRemove = async (user) => {
+    if (!window.confirm(`Remove ${user.name}? Their order and payment history will be preserved.`)) return;
+    try {
+      await adminApi.removeUser(user.id);
+      toast.success('User removed');
+      setUsers((prev) => prev.map((item) => item.id === user.id ? { ...item, is_active: false, removed_at: new Date().toISOString() } : item));
+    } catch (error) { toast.error(error.response?.data?.detail || 'Remove failed'); }
+  };
+
   return (
     <div className="page-wrapper">
       <section className="section" style={{ paddingTop: '32px' }}>
@@ -44,6 +53,7 @@ export default function ManageUsers() {
               <option value="">All Roles</option>
               <option value="customer">Customer</option>
               <option value="admin">Admin</option>
+              <option value="seller">Seller</option>
               <option value="delivery_partner">Delivery Partner</option>
             </select>
           </div>
@@ -105,6 +115,8 @@ export default function ManageUsers() {
                           >
                             {user.is_active ? <FiUserX size={16} /> : <FiUserCheck size={16} />}
                           </button>
+                          {user.role !== 'admin' && <button className="btn-ghost btn-sm" style={{ color: 'var(--red-500)' }}
+                            onClick={() => handleRemove(user)} title="Remove user"><FiTrash2 size={16} /></button>}
                         </td>
                       </tr>
                     ))}

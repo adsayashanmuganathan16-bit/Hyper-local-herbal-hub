@@ -38,6 +38,13 @@
   padding: 8px 0;
 }
 .checkout-item-info { display: flex; flex-direction: column; gap: 2px; }
+.checkout-postal-note {
+  margin-top: 10px;
+  color: var(--green-600);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: right;
+}
 
 @media (max-width: 768px) {
   .checkout-layout { grid-template-columns: 1fr; }

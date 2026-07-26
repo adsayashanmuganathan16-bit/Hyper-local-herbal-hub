@@ -113,6 +113,9 @@ export function AuthProvider({ children }) {
     loading,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
+    isSeller: user?.role === 'seller',
+    isCustomer: user?.role === 'customer',
+    isDeliveryStaff: ['delivery_staff', 'delivery_partner'].includes(user?.role),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
