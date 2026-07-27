@@ -277,9 +277,10 @@
 
 .plant-scientific-field .plant-single-value {
   color: var(--green-700);
-  font-family: Georgia, serif;
+  font-family: var(--font-body);
   font-size: 14px;
   font-style: italic;
+  font-weight: 500;
 }
 
 .plant-confidence-field .plant-single-value {
