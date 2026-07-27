@@ -1,15 +1,17 @@
-export const formatCurrency = (amount) => `₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const formatCurrency = (amount) => `Rs. ${Number(amount || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const formatDate = (dateStr) => {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const normalized = /(?:Z|[+-]\d\d:\d\d)$/.test(dateStr) ? dateStr : `${dateStr}Z`;
+  const d = new Date(normalized);
+  return d.toLocaleDateString('en-LK', { timeZone: 'Asia/Colombo', day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 export const formatDateTime = (dateStr) => {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const normalized = /(?:Z|[+-]\d\d:\d\d)$/.test(dateStr) ? dateStr : `${dateStr}Z`;
+  const d = new Date(normalized);
+  return d.toLocaleString('en-LK', { timeZone: 'Asia/Colombo', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) + ' SLST';
 };
 
 export const truncateText = (text, maxLen = 100) => {

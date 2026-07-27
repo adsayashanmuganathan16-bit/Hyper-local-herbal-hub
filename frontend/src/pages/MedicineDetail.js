@@ -10,6 +10,7 @@ import ReviewStars from '../components/ReviewStars';
 import MedicineCard from '../components/MedicineCard';
 import Loading from '../components/Loading';
 import { toast } from 'react-toastify';
+import DeliveryMap from '../components/DeliveryMap';
 
 const PLACEHOLDER_IMG = 'https://picsum.photos/seed/herb-detail/600/600.jpg';
 
@@ -45,9 +46,14 @@ export default function MedicineDetail() {
     fetch();
   }, [id]);
 
-  const handleAddToCart = () => {
+  const [adding, setAdding] = useState(false);
+
+  const handleAddToCart = async () => {
     if (!isAuthenticated) return toast.info('Please login to add to cart');
-    for (let i = 0; i < qty; i++) addToCart(medicine);
+    if (qty > medicine.stock) return toast.error(`Only ${medicine.stock} items are available`);
+    setAdding(true);
+    await addToCart(medicine, qty);
+    setAdding(false);
   };
 
   if (loading) return <Loading />;
@@ -118,6 +124,9 @@ export default function MedicineDetail() {
               )}
 
               <p className="detail-desc">{medicine.description}</p>
+              {medicine.seller && <div className="detail-section"><h3>Sold by {medicine.seller.name}</h3>
+                <p className="text-gray text-sm">{medicine.seller.address?.address_line1 || 'Store location'}</p>
+                <DeliveryMap latitude={medicine.seller.latitude} longitude={medicine.seller.longitude} label={medicine.seller.name}/></div>}
 
               {medicine.benefits?.length > 0 && (
                 <div className="detail-section">
@@ -161,10 +170,10 @@ export default function MedicineDetail() {
                 <div className="qty-control" style={{ transform: 'none' }}>
                   <button className="qty-btn" onClick={() => setQty(Math.max(1, qty - 1))}><FiMinus size={14} /></button>
                   <span className="qty-value">{qty}</span>
-                  <button className="qty-btn" onClick={() => setQty(qty + 1)}><FiPlus size={14} /></button>
+                  <button className="qty-btn" onClick={() => setQty(Math.min(medicine.stock, qty + 1))}><FiPlus size={14} /></button>
                 </div>
-                <button className="btn btn-primary btn-lg" onClick={handleAddToCart} disabled={outOfStock}>
-                  <FiShoppingCart size={18} /> {outOfStock ? 'Out of Stock' : 'Add to Cart'}
+                <button className="btn btn-primary btn-lg" onClick={handleAddToCart} disabled={outOfStock || adding}>
+                  <FiShoppingCart size={18} /> {outOfStock ? 'Out of Stock' : adding ? 'Adding…' : 'Add to Cart'}
                 </button>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { FiPackage } from 'react-icons/fi';
 import { orderApi } from '../api/orderApi';
 import OrderCard from '../components/OrderCard';
 import Loading from '../components/Loading';
+import { reviewApi } from '../api/reviewApi';
 
 const STATUS_FILTERS = [
   { value: '', label: 'All Orders' },
@@ -18,6 +19,7 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeStatus, setActiveStatus] = useState('');
+  const [reviews, setReviews] = useState([]);
 
   useEffect(() => {
     async function fetch() {
@@ -34,6 +36,10 @@ export default function Orders() {
     }
     fetch();
   }, [activeStatus]);
+
+  useEffect(() => {
+    reviewApi.getMyReviews({ page: 1 }).then(({ data }) => setReviews(data.items || [])).catch(() => {});
+  }, []);
 
   return (
     <div className="page-wrapper">
@@ -56,7 +62,14 @@ export default function Orders() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {orders.map((order) => <OrderCard key={order.id} order={order} />)}
+              {orders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  reviews={reviews.filter((review) => review.order_id === order.id)}
+                  onReviewSubmitted={(review) => setReviews((current) => [review, ...current])}
+                />
+              ))}
             </div>
           )}
         </div>

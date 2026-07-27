@@ -1,6 +1,7 @@
 // Mock backend: routes API requests to the localStorage-backed db.
 // Mimics the shape of the original FastAPI backend responses.
 import { db, CATEGORIES, uid } from './db';
+import { parcelWeight, sriLankaPostFee } from '../utils/shipping';
 
 const PAGE_SIZE = 12;
 
@@ -30,6 +31,12 @@ function requireAuth() {
 function requireAdmin() {
   const user = requireAuth();
   if (user.role !== 'admin') throw new ApiError(403, 'Admin access required');
+  return user;
+}
+
+function requireSeller() {
+  const user = requireAuth();
+  if (user.role !== 'seller') throw new ApiError(403, 'Seller access required');
   return user;
 }
 
@@ -374,8 +381,12 @@ const routes = [
   }],
   ['GET', '/api/medicines/', ({ query }) => searchMedicines(query)],
   ['POST', '/api/medicines/', ({ body }) => {
-    requireAdmin();
+    const user = requireAuth();
+    if (!['admin', 'seller'].includes(user.role)) throw new ApiError(403, 'Product management access required');
     const meds = db.getMedicines();
+    if (!Number.isInteger(Number(body.weight_grams)) || Number(body.weight_grams) <= 0) {
+      throw new ApiError(422, 'Weight must be greater than zero');
+    }
     const med = {
       id: uid(),
       images: [`https://picsum.photos/seed/${uid()}/600/600`],
@@ -389,6 +400,8 @@ const routes = [
       benefits: [],
       ingredients: [],
       ...body,
+      seller_id: user.role === 'seller' ? user.id : (body.seller_id || null),
+      seller_name: user.role === 'seller' ? (user.business_name || user.name) : (body.seller_name || 'Herbal Hub'),
     };
     meds.unshift(med);
     db.setMedicines(meds);
@@ -400,29 +413,70 @@ const routes = [
     return med;
   }],
   ['PUT', '/api/medicines/:id', ({ params, body }) => {
-    requireAdmin();
+    const user = requireAuth();
     const meds = db.getMedicines();
     const idx = meds.findIndex((m) => m.id === params.id);
     if (idx === -1) throw new ApiError(404, 'Medicine not found');
+    if (body.weight_grams !== undefined && (!Number.isInteger(Number(body.weight_grams)) || Number(body.weight_grams) <= 0)) {
+      throw new ApiError(422, 'Weight must be greater than zero');
+    }
+    if (user.role !== 'admin' && meds[idx].seller_id !== user.id) throw new ApiError(403, 'You can only edit your products');
     meds[idx] = { ...meds[idx], ...body, id: meds[idx].id };
     db.setMedicines(meds);
     return meds[idx];
   }],
   ['DELETE', '/api/medicines/:id', ({ params }) => {
-    requireAdmin();
+    const user = requireAuth();
+    const existing = db.getMedicines().find((m) => m.id === params.id);
+    if (!existing) throw new ApiError(404, 'Medicine not found');
+    if (user.role !== 'admin' && existing.seller_id !== user.id) throw new ApiError(403, 'You can only delete your products');
     const meds = db.getMedicines().filter((m) => m.id !== params.id);
     db.setMedicines(meds);
     return { success: true };
   }],
   ['POST', '/api/medicines/:id/images', ({ params, body }) => {
-    requireAdmin();
+    const user = requireAuth();
     const meds = db.getMedicines();
     const idx = meds.findIndex((m) => m.id === params.id);
     if (idx === -1) throw new ApiError(404, 'Medicine not found');
+    if (user.role !== 'admin' && meds[idx].seller_id !== user.id) throw new ApiError(403, 'You can only edit your products');
     const { url } = fileToUrl(body, 'files');
     if (url) meds[idx].images = [url, ...(meds[idx].images || [])];
     db.setMedicines(meds);
     return meds[idx];
+  }],
+
+  // ---------- SELLER ----------
+  ['GET', '/api/seller/dashboard', () => {
+    const seller = requireSeller();
+    const products = db.getMedicines().filter((m) => m.seller_id === seller.id);
+    const productIds = new Set(products.map((m) => m.id));
+    const orders = db.getOrders().filter((o) => o.items.some((item) => productIds.has(item.medicine_id)));
+    const unitsSold = orders.filter((o) => o.status !== 'cancelled').flatMap((o) => o.items)
+      .filter((item) => productIds.has(item.medicine_id)).reduce((sum, item) => sum + item.quantity, 0);
+    const revenue = orders.filter((o) => o.status !== 'cancelled').flatMap((o) => o.items)
+      .filter((item) => productIds.has(item.medicine_id)).reduce((sum, item) => sum + item.price * item.quantity, 0);
+    return {
+      total_products: products.length,
+      low_stock_products: products.filter((m) => m.stock <= 10).length,
+      total_orders: orders.length,
+      units_sold: unitsSold,
+      total_revenue: revenue,
+      recent_orders: orders.slice(0, 6),
+    };
+  }],
+  ['GET', '/api/seller/products', ({ query }) => {
+    const seller = requireSeller();
+    let items = db.getMedicines().filter((m) => m.seller_id === seller.id);
+    if (query.q) items = items.filter((m) => m.name.toLowerCase().includes(query.q.toLowerCase()));
+    return { items, total: items.length };
+  }],
+  ['GET', '/api/seller/orders', () => {
+    const seller = requireSeller();
+    const productIds = new Set(db.getMedicines().filter((m) => m.seller_id === seller.id).map((m) => m.id));
+    const items = db.getOrders().filter((o) => o.items.some((item) => productIds.has(item.medicine_id)))
+      .map((o) => ({ ...o, items: o.items.filter((item) => productIds.has(item.medicine_id)) }));
+    return { items, total: items.length };
   }],
 
   // ---------- CART ----------
@@ -434,8 +488,9 @@ const routes = [
     const user = requireAuth();
     const items = getUserCart(user.id);
     const existing = items.find((i) => i.medicine_id === body.medicine_id);
+    const medicine = db.getMedicines().find((item) => item.id === body.medicine_id);
     if (existing) existing.quantity += body.quantity || 1;
-    else items.push({ ...body, quantity: body.quantity || 1 });
+    else items.push({ ...body, weight_grams: medicine?.weight_grams || 100, quantity: body.quantity || 1 });
     setUserCart(user.id, items);
     return { ...cartTotals(items), totals: cartTotals(items) };
   }],
@@ -463,29 +518,40 @@ const routes = [
   // ---------- CHECKOUT / ORDERS ----------
   ['POST', '/api/checkout/create-order', ({ body }) => {
     const user = requireAuth();
+    const medicines = db.getMedicines();
     const items = (body.items || []).map((i) => ({
       medicine_id: i.medicine_id,
       name: i.name,
       price: i.price,
       quantity: i.quantity,
       image: i.image,
+      weight_grams: medicines.find((medicine) => medicine.id === i.medicine_id)?.weight_grams || 100,
     }));
     if (items.length === 0) throw new ApiError(400, 'Cart is empty');
     const total_amount = items.reduce((s, i) => s + i.price * i.quantity, 0);
-    const delivery_charge = total_amount >= 500 ? 0 : 49;
+    const parcel_weight = parcelWeight(items);
+    const shipping_fee = sriLankaPostFee(parcel_weight);
+    if (shipping_fee == null) throw new ApiError(422, 'Sri Lanka Post shipping supports parcels up to 2 kg');
     const order = {
       id: uid(),
       user_id: user.id,
       user_name: user.name,
       items,
       total_amount,
-      delivery_charge,
+      delivery_charge: shipping_fee,
+      shipping_fee,
+      parcel_weight,
       discount: 0,
-      final_amount: total_amount + delivery_charge,
+      final_amount: total_amount + shipping_fee,
       address: body.address,
       payment_method: body.payment_method,
       payment_status: body.payment_method === 'cod' ? 'pending' : 'completed',
       status: 'placed',
+      courier_service: null,
+      tracking_number: null,
+      shipping_date: null,
+      delivery_status: 'pending',
+      last_status_updated: new Date().toISOString(),
       created_at: new Date().toISOString(),
     };
     const orders = db.getOrders();
@@ -524,6 +590,47 @@ const routes = [
     db.setOrders(orders);
     addNotification(o.user_id, 'Order status updated', `Your order #${o.id.slice(0, 8).toUpperCase()} is now ${body.status.replace(/_/g, ' ')}.`, `/orders/${o.id}`);
     return o;
+  }],
+  ['GET', '/api/orders/:id/postal-tracking', ({ params }) => {
+    const user = requireAuth();
+    const order = db.getOrders().find((item) => item.id === params.id);
+    if (!order) throw new ApiError(404, 'Order not found');
+    if (user.role === 'customer' && order.user_id !== user.id) throw new ApiError(403, 'Tracking access denied');
+    return order;
+  }],
+  ['PUT', '/api/orders/:id/delivery-status', ({ params, body }) => {
+    const user = requireAuth();
+    if (!['seller', 'admin'].includes(user.role)) throw new ApiError(403, 'Seller or admin access required');
+    const orders = db.getOrders();
+    const order = orders.find((item) => item.id === params.id);
+    if (!order) throw new ApiError(404, 'Order not found');
+    const transitions = { pending: 'accepted', accepted: 'packed', shipped: 'in_transit', in_transit: 'delivered' };
+    const current = order.delivery_status || 'pending';
+    if (transitions[current] !== body.status) throw new ApiError(409, `Cannot change delivery status from ${current} to ${body.status}`);
+    order.delivery_status = body.status;
+    order.status = { accepted: 'confirmed', packed: 'packed', in_transit: 'out_for_delivery', delivered: 'delivered' }[body.status];
+    order.last_status_updated = new Date().toISOString();
+    db.setOrders(orders);
+    return order;
+  }],
+  ['PUT', '/api/orders/:id/shipping', ({ params, body }) => {
+    const user = requireAuth();
+    if (!['seller', 'admin'].includes(user.role)) throw new ApiError(403, 'Seller or admin access required');
+    const orders = db.getOrders();
+    const order = orders.find((item) => item.id === params.id);
+    if (!order) throw new ApiError(404, 'Order not found');
+    if (!['packed', 'shipped', 'in_transit', 'delivered'].includes(order.delivery_status)) throw new ApiError(409, 'Order must be packed before shipping');
+    if (orders.some((item) => item.id !== order.id && item.tracking_number === body.tracking_number.toUpperCase())) {
+      throw new ApiError(409, 'This tracking number is already assigned to another order');
+    }
+    Object.assign(order, body, {
+      tracking_number: body.tracking_number.toUpperCase(),
+      delivery_status: order.delivery_status === 'packed' ? 'shipped' : order.delivery_status,
+      status: order.delivery_status === 'packed' ? 'shipped' : order.status,
+      last_status_updated: new Date().toISOString(),
+    });
+    db.setOrders(orders);
+    return order;
   }],
   ['GET', '/api/orders/:id', ({ params }) => {
     const user = requireAuth();
@@ -582,6 +689,21 @@ const routes = [
     db.setNotifications(notifs);
     return { success: true };
   }],
+  ['DELETE', '/api/notifications/:id', ({ params }) => {
+    const user = requireAuth();
+    const notifications = db.getNotifications();
+    const owned = notifications.some((item) => item.id === params.id && item.user_id === user.id);
+    if (!owned) throw new ApiError(404, 'Notification not found');
+    db.setNotifications(notifications.filter((item) => item.id !== params.id));
+    return { message: 'Notification deleted' };
+  }],
+  ['DELETE', '/api/notifications/', () => {
+    const user = requireAuth();
+    const notifications = db.getNotifications();
+    const deletedCount = notifications.filter((item) => item.user_id === user.id).length;
+    db.setNotifications(notifications.filter((item) => item.user_id !== user.id));
+    return { message: 'Notifications cleared', deleted_count: deletedCount };
+  }],
 
   // ---------- PRESCRIPTIONS ----------
   ['POST', '/api/prescriptions/upload', ({ body }) => {
@@ -637,9 +759,22 @@ const routes = [
   // ---------- REVIEWS ----------
   ['POST', '/api/reviews/', ({ body }) => {
     const user = requireAuth();
+    if (user.role !== 'customer') throw new ApiError(403, 'Customer access required');
+    const order = db.getOrders().find((item) => item.id === body.order_id && item.user_id === user.id);
+    if (!order) throw new ApiError(404, 'Order not found');
+    if (order.status !== 'delivered') throw new ApiError(400, 'Can only review delivered orders');
+    if (!order.items.some((item) => item.medicine_id === body.medicine_id)) {
+      throw new ApiError(400, 'This medicine is not part of the order');
+    }
+    const reviews = db.getReviews();
+    if (reviews.some((item) => item.user_id === user.id
+      && item.order_id === body.order_id && item.medicine_id === body.medicine_id)) {
+      throw new ApiError(400, 'You already reviewed this item for this order');
+    }
     const review = {
       id: uid(),
       medicine_id: body.medicine_id,
+      order_id: body.order_id,
       user_id: user.id,
       user_name: user.name,
       rating: body.rating,
@@ -647,7 +782,6 @@ const routes = [
       comment: body.comment || '',
       created_at: new Date().toISOString(),
     };
-    const reviews = db.getReviews();
     reviews.unshift(review);
     db.setReviews(reviews);
     // recompute medicine rating
@@ -668,6 +802,50 @@ const routes = [
   ['GET', '/api/reviews/my-reviews', () => {
     const user = requireAuth();
     const items = db.getReviews().filter((r) => r.user_id === user.id);
+    return { items, total: items.length };
+  }],
+  ['GET', '/api/reviews/admin/all', () => {
+    requireAdmin();
+    const medicines = db.getMedicines();
+    const items = db.getReviews().map((review) => ({
+      ...review,
+      medicine_name: medicines.find((medicine) => medicine.id === review.medicine_id)?.name || 'Unknown product',
+    }));
+    return { items, total: items.length };
+  }],
+  ['GET', '/api/reviews/seller/all', () => {
+    const seller = requireSeller();
+    const medicines = db.getMedicines();
+    const productIds = new Set(medicines.filter((medicine) => medicine.seller_id === seller.id).map((medicine) => medicine.id));
+    const items = db.getReviews().filter((review) => productIds.has(review.medicine_id)).map((review) => ({
+      ...review,
+      medicine_name: medicines.find((medicine) => medicine.id === review.medicine_id)?.name || 'Unknown product',
+    }));
+    return { items, total: items.length };
+  }],
+
+  // ---------- NEWSLETTER ----------
+  ['POST', '/api/newsletter/subscribe', ({ body }) => {
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) throw new ApiError(422, 'Enter a valid email address');
+    const subscribers = db.getSubscribers();
+    if (subscribers.some((subscriber) => subscriber.email === email)) {
+      return { message: 'This email is already subscribed', subscribed: false };
+    }
+    subscribers.unshift({
+      id: uid(),
+      email,
+      status: 'active',
+      source: 'website_footer',
+      subscribed_at: new Date().toISOString(),
+    });
+    db.setSubscribers(subscribers);
+    return { message: 'Thank you for subscribing!', subscribed: true };
+  }],
+  ['GET', '/api/newsletter/admin/subscribers', ({ query }) => {
+    requireAdmin();
+    let items = db.getSubscribers().filter((subscriber) => subscriber.status === 'active');
+    if (query.q) items = items.filter((subscriber) => subscriber.email.includes(query.q.toLowerCase()));
     return { items, total: items.length };
   }],
 

@@ -1,82 +1,127 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { FiMapPin } from 'react-icons/fi';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-function emojiIcon(emoji, cls) {
+const GEOAPIFY_KEY = process.env.REACT_APP_GEOAPIFY_API_KEY;
+const UPDATE_INTERVAL_MS = 3000;
+
+function markerIcon(label, className) {
   return L.divIcon({
     className: '',
-    html: `<div class="map-pin ${cls || ''}">${emoji}</div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
+    html: `<div class="geo-marker ${className}"><span>${label}</span></div>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 40],
+    popupAnchor: [0, -38],
   });
 }
 
-export default function LiveMap({ origin, destination, route = [], courier, heading = 0 }) {
-  const elRef = useRef(null);
-  const mapRef = useRef(null);
-  const courierRef = useRef(null);
-  const traveledRef = useRef(null);
+function validPoint(point) {
+  return point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng));
+}
 
-  // Init map once.
+function geometryToLatLngs(geometry) {
+  if (!geometry?.coordinates) return [];
+  const lines = geometry.type === 'MultiLineString' ? geometry.coordinates : [geometry.coordinates];
+  return lines.flat().map(([lng, lat]) => [lat, lng]);
+}
+
+export default function LiveMap({ origin, destination, courier, onRouteInfo }) {
+  const elementRef = useRef(null);
+  const mapRef = useRef(null);
+  const courierMarkerRef = useRef(null);
+  const travelledRef = useRef(null);
+  const routeCoordinatesRef = useRef([]);
+  const latestCourierRef = useRef(courier);
+  const [error, setError] = useState('');
+
+  useEffect(() => { latestCourierRef.current = courier; }, [courier]);
+
   useEffect(() => {
-    if (!elRef.current || mapRef.current) return;
-    const map = L.map(elRef.current, {
-      zoomControl: true,
-      attributionControl: true,
-      scrollWheelZoom: false,
-    });
+    if (!elementRef.current || mapRef.current || !validPoint(origin) || !validPoint(destination)) return undefined;
+    const map = L.map(elementRef.current, { scrollWheelZoom: false, zoomControl: true });
     mapRef.current = map;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
+    if (!GEOAPIFY_KEY) {
+      setError('Add REACT_APP_GEOAPIFY_API_KEY to display the delivery map.');
+      map.setView([destination.lat, destination.lng], 12);
+      return () => { map.remove(); mapRef.current = null; };
+    }
 
-    const line = route.length >= 2 ? route : [
-      [origin.lat, origin.lng],
-      [destination.lat, destination.lng],
-    ];
+    L.tileLayer(
+      `https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png?apiKey=${encodeURIComponent(GEOAPIFY_KEY)}`,
+      {
+        maxZoom: 20,
+        attribution: 'Powered by Geoapify | © OpenStreetMap contributors',
+      }
+    ).addTo(map);
 
-    // Full route (faint) + traveled portion (bold).
-    L.polyline(line, { color: '#94d2bd', weight: 5, opacity: 0.6, dashArray: '2,10' }).addTo(map);
-    traveledRef.current = L.polyline([line[0]], { color: '#2d6a4f', weight: 5 }).addTo(map);
+    const sellerPoint = [Number(origin.lat), Number(origin.lng)];
+    const customerPoint = [Number(destination.lat), Number(destination.lng)];
+    L.marker(sellerPoint, { icon: markerIcon('S', 'geo-marker-seller') })
+      .addTo(map).bindPopup(`<strong>Seller location</strong><br>${origin.label || 'Herbal Hub seller'}`);
+    L.marker(customerPoint, { icon: markerIcon('C', 'geo-marker-customer') })
+      .addTo(map).bindPopup(`<strong>Customer location</strong><br>${destination.label || 'Delivery address'}`);
+    if (validPoint(courier)) {
+      courierMarkerRef.current = L.marker(
+        [courier.lat, courier.lng],
+        { icon: markerIcon('●', 'geo-marker-courier'), zIndexOffset: 1000 }
+      ).addTo(map).bindPopup('<strong>Courier location</strong><br>Live location');
+    }
 
-    L.marker([origin.lat, origin.lng], { icon: emojiIcon('🏪', 'pin-store') })
-      .addTo(map)
-      .bindPopup(`<b>Pickup</b><br/>${origin.label}`);
-    L.marker([destination.lat, destination.lng], { icon: emojiIcon('🏠', 'pin-home') })
-      .addTo(map)
-      .bindPopup(`<b>Delivering to</b><br/>${destination.label}`);
+    map.fitBounds(L.latLngBounds([sellerPoint, customerPoint]), { padding: [55, 55] });
 
-    courierRef.current = L.marker([courier?.lat ?? origin.lat, courier?.lng ?? origin.lng], {
-      icon: emojiIcon('🛵', 'pin-courier'),
-      zIndexOffset: 1000,
-    })
-      .addTo(map)
-      .bindPopup('<b>Your delivery partner</b>');
+    const controller = new AbortController();
+    const routeOrigin = validPoint(courier) ? courier : origin;
+    const waypoints = `${routeOrigin.lat},${routeOrigin.lng}|${destination.lat},${destination.lng}`;
+    const routingUrl = `https://api.geoapify.com/v1/routing?waypoints=${encodeURIComponent(waypoints)}&mode=drive&apiKey=${encodeURIComponent(GEOAPIFY_KEY)}`;
+    fetch(routingUrl, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error('Geoapify could not calculate this route');
+        return response.json();
+      })
+      .then((result) => {
+        const feature = result.features?.[0];
+        const coordinates = geometryToLatLngs(feature?.geometry);
+        if (coordinates.length < 2) throw new Error('No driving route was found');
+        routeCoordinatesRef.current = coordinates;
+        L.polyline(coordinates, { color: '#86b397', weight: 7, opacity: .75 }).addTo(map);
+        travelledRef.current = L.polyline([coordinates[0]], { color: '#143d2b', weight: 7 }).addTo(map);
+        const visibleBounds = L.latLngBounds(coordinates);
+        visibleBounds.extend(sellerPoint);
+        map.fitBounds(visibleBounds, { padding: [55, 55] });
+        onRouteInfo?.({
+          distanceKm: Number(feature.properties?.distance || 0) / 1000,
+          timeMinutes: Number(feature.properties?.time || 0) / 60,
+        });
+      })
+      .catch((routeError) => {
+        if (routeError.name !== 'AbortError') setError(routeError.message);
+      });
 
-    map.fitBounds(L.latLngBounds(line), { padding: [40, 40] });
+    const markerTimer = window.setInterval(() => {
+      const position = latestCourierRef.current;
+      if (!validPoint(position) || !courierMarkerRef.current) return;
+      courierMarkerRef.current.setLatLng([position.lat, position.lng]);
+      const route = routeCoordinatesRef.current;
+      if (route.length && travelledRef.current) {
+        const progress = Math.max(0, Math.min(1, Number(position.t || 0)));
+        const index = Math.floor(progress * (route.length - 1));
+        travelledRef.current.setLatLngs([...route.slice(0, index + 1), [position.lat, position.lng]]);
+      }
+    }, UPDATE_INTERVAL_MS);
 
     return () => {
+      controller.abort();
+      window.clearInterval(markerTimer);
       map.remove();
       mapRef.current = null;
     };
-  }, []); // eslint-disable-line
+  }, [origin?.lat, origin?.lng, destination?.lat, destination?.lng, courier?.lat, courier?.lng, onRouteInfo]);
 
-  // Move courier + grow traveled path as position updates.
-  useEffect(() => {
-    if (!mapRef.current || !courier) return;
-    if (courierRef.current) courierRef.current.setLatLng([courier.lat, courier.lng]);
-    if (traveledRef.current) {
-      const line = route.length >= 2 ? route : [
-        [origin.lat, origin.lng],
-        [destination.lat, destination.lng],
-      ];
-      // Traveled = route points already passed + current courier position.
-      const passed = line.filter((_, i) => i / (line.length - 1) <= (courier.t ?? 0));
-      traveledRef.current.setLatLngs([...passed, [courier.lat, courier.lng]]);
-    }
-  }, [courier, route, origin, destination]);
-
-  return <div ref={elRef} className="live-map" />;
+  return <div className="geoapify-map-shell">
+    <div ref={elementRef} className="live-map" aria-label="Live Geoapify delivery map" />
+    <div className="geoapify-map-brand"><FiMapPin /> Geoapify · OpenStreetMap</div>
+    {error && <div className="geoapify-map-error">{error}</div>}
+  </div>;
 }

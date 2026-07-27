@@ -1,49 +1,164 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-load_dotenv()
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+ENV_FILE = BACKEND_DIR / ".env"
+load_dotenv(dotenv_path=ENV_FILE)
+
+
+def _required(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(
+            f"Missing required environment variable {name}. "
+            "Copy backend/.env.example to backend/.env and configure it."
+        )
+    return value
+
+
+def _integer(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be an integer.") from exc
+
+
+def _number(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be a number.") from exc
 
 
 class Settings:
-    """Application settings loaded from environment variables."""
+    """Validated application settings loaded from backend/.env."""
 
-    # MongoDB
-    MONGODB_URI: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017/herbal_hub")
-    DB_NAME: str = os.getenv("DB_NAME", "herbal_hub")
+    MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/herbal_hub")
+    DB_NAME = os.getenv("DB_NAME", "herbal_hub")
 
-    # JWT
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "change-this-secret-key")
-    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-    JWT_EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))
-    JWT_REFRESH_EXPIRE_DAYS: int = int(os.getenv("JWT_REFRESH_EXPIRE_DAYS", "7"))
+    SECRET_KEY = _required("SECRET_KEY")
+    JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+    JWT_EXPIRE_MINUTES = _integer("JWT_EXPIRE_MINUTES", 1440)
+    JWT_REFRESH_EXPIRE_DAYS = _integer("JWT_REFRESH_EXPIRE_DAYS", 7)
+    RESET_TOKEN_EXPIRE_MINUTES = _integer("RESET_TOKEN_EXPIRE_MINUTES", 30)
+    EMAIL_VERIFICATION_EXPIRE_HOURS = _integer("EMAIL_VERIFICATION_EXPIRE_HOURS", 24)
 
-    # Auth tokens
-    RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("RESET_TOKEN_EXPIRE_MINUTES", "30"))
-    EMAIL_VERIFICATION_EXPIRE_HOURS: int = int(os.getenv("EMAIL_VERIFICATION_EXPIRE_HOURS", "24"))
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+    AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
+    S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "")
+    PROFILE_IMAGE_STORAGE = os.getenv("PROFILE_IMAGE_STORAGE", "local").lower()
+    PROFILE_IMAGE_UPLOAD_DIR = os.getenv("PROFILE_IMAGE_UPLOAD_DIR", "uploads/profile-images")
+    PROFILE_IMAGE_MAX_BYTES = _integer("PROFILE_IMAGE_MAX_BYTES", 5 * 1024 * 1024)
 
-    # AWS S3
-    AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "")
-    AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
-    AWS_REGION: str = os.getenv("AWS_REGION", "ap-south-1")
-    S3_BUCKET_NAME: str = os.getenv("S3_BUCKET_NAME", "herbal-hub-images")
+    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+    STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+    SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT = _integer("SMTP_PORT", 587)
+    SMTP_USER = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+    TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
+    TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+    TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "")
 
-    # Stripe
-    STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
-    STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "http://localhost:8000").rstrip("/")
+    GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_API_KEY", "")
+    INITIAL_SERVICE_AREA_NAME = os.getenv("INITIAL_SERVICE_AREA_NAME", "Kilinochchi District")
+    INITIAL_SERVICE_AREA_ALIASES = [
+        value.strip()
+        for value in os.getenv(
+            "INITIAL_SERVICE_AREA_ALIASES", "Kilinochchi District,Kilinochchi"
+        ).split(",")
+        if value.strip()
+    ]
+    SERVICE_AREA_REJECTION_MESSAGE = os.getenv(
+        "SERVICE_AREA_REJECTION_MESSAGE",
+        "Sorry, we currently deliver only within Kilinochchi District.",
+    )
+    INITIAL_SERVICE_AREA_LATITUDE = _number("INITIAL_SERVICE_AREA_LATITUDE", 9.3803)
+    INITIAL_SERVICE_AREA_LONGITUDE = _number("INITIAL_SERVICE_AREA_LONGITUDE", 80.3770)
 
-    # SMTP
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    SMTP_USER: str = os.getenv("SMTP_USER", "")
-    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    PLANTNET_API_KEY = os.getenv("PLANTNET_API_KEY", "")
+    PLANTNET_API_URL = os.getenv(
+        "PLANTNET_API_URL", "https://my-api.plantnet.org/v2/identify/all"
+    )
+    PLANTNET_TIMEOUT_SECONDS = _number("PLANTNET_TIMEOUT_SECONDS", 30)
+    PLANTNET_MIN_CONFIDENCE = _number("PLANTNET_MIN_CONFIDENCE", 0.20)
 
-    # Twilio
-    TWILIO_ACCOUNT_SID: str = os.getenv("TWILIO_ACCOUNT_SID", "")
-    TWILIO_AUTH_TOKEN: str = os.getenv("TWILIO_AUTH_TOKEN", "")
-    TWILIO_PHONE_NUMBER: str = os.getenv("TWILIO_PHONE_NUMBER", "")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_API_BASE_URL = os.getenv(
+        "GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com/v1beta"
+    )
+    GEMINI_TIMEOUT_SECONDS = _number("GEMINI_TIMEOUT_SECONDS", 30)
 
-    # Frontend
-    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    DATA_ENCRYPTION_KEY = os.getenv("DATA_ENCRYPTION_KEY", "")
+    DEFAULT_COMMISSION_PERCENT = os.getenv("DEFAULT_COMMISSION_PERCENT", "10.00")
+    PAYOUT_MODE = os.getenv("PAYOUT_MODE", "manual")
+
+    PAYHERE_MERCHANT_ID = os.getenv("PAYHERE_MERCHANT_ID", "")
+    PAYHERE_MERCHANT_SECRET = os.getenv("PAYHERE_MERCHANT_SECRET", "")
+    PAYHERE_NOTIFY_URL = os.getenv(
+        "PAYHERE_NOTIFY_URL", "http://localhost:8000/api/webhooks/payhere"
+    )
+    PAYHERE_RETURN_URL = os.getenv("PAYHERE_RETURN_URL", "http://localhost:3000/orders")
+    PAYHERE_CANCEL_URL = os.getenv("PAYHERE_CANCEL_URL", "http://localhost:3000/checkout")
+    PAYHERE_SANDBOX = os.getenv("PAYHERE_SANDBOX", "true").lower() == "true"
+
+    ONEPAY_APP_ID = os.getenv("ONEPAY_APP_ID", os.getenv("ONEPAY_MERCHANT_ID", ""))
+    ONEPAY_APP_TOKEN = os.getenv("ONEPAY_APP_TOKEN", os.getenv("ONEPAY_API_KEY", ""))
+    ONEPAY_HASH_SALT = os.getenv("ONEPAY_HASH_SALT", os.getenv("ONEPAY_API_SECRET", ""))
+    ONEPAY_SANDBOX = os.getenv("ONEPAY_SANDBOX", "true").lower() == "true"
+    ONEPAY_RETURN_URL = os.getenv("ONEPAY_RETURN_URL", "http://localhost:3000/orders")
+    ONEPAY_CANCEL_URL = os.getenv("ONEPAY_CANCEL_URL", "http://localhost:3000/checkout")
+    ONEPAY_NOTIFY_URL = os.getenv("ONEPAY_NOTIFY_URL", "")
+    ONEPAY_API_BASE_URL = os.getenv("ONEPAY_API_BASE_URL", "https://api.onepay.lk")
+    ONEPAY_TIMEOUT_SECONDS = _number("ONEPAY_TIMEOUT_SECONDS", 15)
+    MOCK_PAYMENT_MERCHANT_NAME = os.getenv("MOCK_PAYMENT_MERCHANT_NAME", "Herbal Hub")
+    PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "mock").strip().lower()
+
+    def validate_payment_configuration(self) -> None:
+        supported = {"mock", "payhere", "onepay"}
+        if self.PAYMENT_PROVIDER not in supported:
+            raise RuntimeError(
+                f"PAYMENT_PROVIDER must be one of: {', '.join(sorted(supported))}."
+            )
+        required = {
+            "payhere": {
+                "PAYHERE_MERCHANT_ID": self.PAYHERE_MERCHANT_ID,
+                "PAYHERE_MERCHANT_SECRET": self.PAYHERE_MERCHANT_SECRET,
+            },
+            "onepay": {
+                "ONEPAY_APP_ID": self.ONEPAY_APP_ID,
+                "ONEPAY_APP_TOKEN": self.ONEPAY_APP_TOKEN,
+                "ONEPAY_HASH_SALT": self.ONEPAY_HASH_SALT,
+            },
+        }.get(self.PAYMENT_PROVIDER, {})
+        missing = [name for name, value in required.items() if not value.strip()]
+        if missing:
+            raise RuntimeError(
+                f"PAYMENT_PROVIDER={self.PAYMENT_PROVIDER} requires: {', '.join(missing)}."
+            )
+
+    def validate_storage_configuration(self) -> None:
+        if self.PROFILE_IMAGE_STORAGE not in {"local", "s3"}:
+            raise RuntimeError("PROFILE_IMAGE_STORAGE must be either local or s3.")
+        if self.PROFILE_IMAGE_STORAGE == "s3":
+            required = {
+                "AWS_ACCESS_KEY_ID": self.AWS_ACCESS_KEY_ID,
+                "AWS_SECRET_ACCESS_KEY": self.AWS_SECRET_ACCESS_KEY,
+                "S3_BUCKET_NAME": self.S3_BUCKET_NAME,
+            }
+            missing = [name for name, value in required.items() if not value.strip()]
+            if missing:
+                raise RuntimeError(
+                    f"PROFILE_IMAGE_STORAGE=s3 requires: {', '.join(missing)}."
+                )
 
 
 settings = Settings()

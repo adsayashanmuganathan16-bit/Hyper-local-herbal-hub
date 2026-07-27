@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FiPhone, FiStar, FiTruck, FiNavigation, FiBell, FiMessageSquare, FiMail, FiMapPin, FiClock,
 } from 'react-icons/fi';
@@ -52,6 +52,7 @@ export default function DeliveryTracker({ delivery, status }) {
 
   const [t, setT] = useState(START_T[status] ?? 0);
   const [feed, setFeed] = useState([]);
+  const [routeInfo, setRouteInfo] = useState(null);
   const [pushEnabled, setPushEnabled] = useState(
     typeof Notification !== 'undefined' && Notification.permission === 'granted'
   );
@@ -63,11 +64,14 @@ export default function DeliveryTracker({ delivery, status }) {
   const courier = useMemo(() => pointAt(route, t) || { lat: delivery.origin.lat, lng: delivery.origin.lng, t: 0 },
     [route, t, delivery.origin]);
 
+  const totalTimeMinutes = routeInfo?.timeMinutes || delivery.base_eta_minutes || 20;
+  const totalDistanceKm = routeInfo?.distanceKm || delivery.distance_km || 5;
   const etaMinutes = Math.max(
     isDelivered ? 0 : 1,
-    Math.round((delivery.base_eta_minutes || 20) * (1 - t))
+    Math.round(totalTimeMinutes * (1 - t))
   );
-  const remainingKm = Math.max(0, Math.round((delivery.distance_km || 5) * (1 - t) * 10) / 10);
+  const remainingKm = Math.max(0, Math.round(totalDistanceKm * (1 - t) * 10) / 10);
+  const handleRouteInfo = useCallback((info) => setRouteInfo(info), []);
 
   const notify = useMemo(() => {
     return (channel, title, text, { push } = {}) => {
@@ -129,10 +133,10 @@ export default function DeliveryTracker({ delivery, status }) {
   useEffect(() => {
     if (!isLive) return undefined;
     const start = START_T[status] ?? 0.2;
-    const stepPerSec = (0.98 - start) / RUN_SECONDS;
+    const stepPerTick = (0.98 - start) / (RUN_SECONDS / 3);
     const id = setInterval(() => {
-      setT((prev) => Math.min(0.98, prev + stepPerSec));
-    }, 1000);
+      setT((prev) => Math.min(0.98, prev + stepPerTick));
+    }, 3000);
     return () => clearInterval(id);
   }, [isLive, status]);
 
@@ -175,7 +179,7 @@ export default function DeliveryTracker({ delivery, status }) {
             <span className="dt-eta-sub">
               {isDelivered
                 ? 'Thanks for shopping with Herbal Hub'
-                : `${remainingKm} km away • ${delivery.distance_km} km total`}
+                : `${remainingKm} km away • ${totalDistanceKm.toFixed(1)} km total`}
             </span>
           </div>
         </div>
@@ -186,12 +190,20 @@ export default function DeliveryTracker({ delivery, status }) {
         )}
       </div>
 
+      <div className="dt-route-metrics">
+        <div><span>Estimated distance</span><strong>{totalDistanceKm.toFixed(1)} km</strong></div>
+        <div><span>Estimated travel time</span><strong>{Math.round(totalTimeMinutes)} min</strong></div>
+        <div><span>Remaining distance</span><strong>{remainingKm.toFixed(1)} km</strong></div>
+        <div><span>Remaining time</span><strong>{etaMinutes} min</strong></div>
+      </div>
+
       {/* Map */}
       <LiveMap
         origin={delivery.origin}
         destination={delivery.destination}
         route={route}
         courier={courier}
+        onRouteInfo={handleRouteInfo}
       />
 
       {/* Agent + notifications */}

@@ -6,14 +6,14 @@ import { toast } from 'react-toastify';
 const CartContext = createContext(null);
 
 export function CartProvider({ children }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isCustomer } = useAuth();
   const [items, setItems] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const fetchCart = useCallback(async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !isCustomer) {
       setItems([]);
       setTotalItems(0);
       setTotalAmount(0);
@@ -30,28 +30,29 @@ export function CartProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isCustomer]);
 
   useEffect(() => {
     fetchCart();
   }, [fetchCart]);
 
-  const addToCart = async (medicine) => {
+  const addToCart = async (medicine, quantity = 1) => {
     try {
-      const { data } = await cartApi.addToCart({
+      await cartApi.addToCart({
         medicine_id: medicine.id || medicine._id,
         name: medicine.name,
         price: medicine.price,
         discount_price: medicine.discount_price,
-        quantity: 1,
+        quantity,
         image: medicine.images?.[0],
         requires_prescription: medicine.requires_prescription,
       });
-      setItems(data.totals ? [...items] : items); // triggers re-fetch on next cycle
       await fetchCart();
-      toast.success(`${medicine.name} added to cart`);
+      toast.success(`${quantity} × ${medicine.name} added to cart`);
+      return true;
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to add to cart');
+      return false;
     }
   };
 

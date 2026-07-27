@@ -3,26 +3,24 @@ import { adminApi } from '../../api/adminApi';
 import { formatCurrency, formatDateTime, formatStatus, getStatusColor } from '../../utils/helpers';
 import { toast } from 'react-toastify';
 import Loading from '../../components/Loading';
+import PostalShippingControls from '../../components/PostalShippingControls';
 
-const STATUSES = ['placed', 'confirmed', 'packed', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'];
+const STATUSES = ['placed', 'preparing', 'ready_for_pickup', 'delivery_assigned', 'pickup_accepted', 'picked_up', 'on_the_way', 'delivered', 'cancelled', 'returned'];
 
 export default function ManageOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
 
-  useEffect(() => {
+  const loadOrders = () => {
+    setLoading(true);
     adminApi.getAllOrders(filter ? { status: filter } : {}).then(({ data }) => setOrders(data.items || []))
       .catch(() => {}).finally(() => setLoading(false));
-  }, [filter]);
-
-  const handleStatusUpdate = async (orderId, newStatus) => {
-    try {
-      await adminApi.updateOrderStatus(orderId, { status: newStatus });
-      toast.success(`Order updated to ${formatStatus(newStatus)}`);
-      setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
-    } catch { toast.error('Update failed'); }
   };
+
+  useEffect(() => {
+    loadOrders();
+  }, [filter]);
 
   return (
     <div className="page-wrapper">
@@ -46,13 +44,14 @@ export default function ManageOrders() {
                                 <th>Amount</th>
                                 <th>Payment</th>
                                 <th>Status</th>
+                                <th>Customer Answer</th>
                                 <th>Date</th>
-                                <th>Update Status</th>
+                                <th>Postal Shipping</th>
                               </tr>
                             </thead>
                             <tbody>
                               {orders.length === 0 ? (
-                                <tr><td colSpan={7} className="text-center text-gray" style={{ padding: 40 }}>No orders found</td></tr>
+                                <tr><td colSpan={8} className="text-center text-gray" style={{ padding: 40 }}>No orders found</td></tr>
                               ) : orders.map((order) => (
                                 <tr key={order.id}>
                                   <td>
@@ -72,17 +71,11 @@ export default function ManageOrders() {
                                     </span>
                                     <br /><span className="text-xs text-gray">{order.payment_method?.replace(/_/g, ' ').toUpperCase()}</span>
                                   </td>
-                                  <td><span className={`badge ${getStatusColor(order.status)}`}>{formatStatus(order.status)}</span></td>
+                                  <td><span className={`badge ${getStatusColor(order.delivery_status || order.status)}`}>{formatStatus(order.delivery_status || order.status)}</span></td>
+                                  <td>{order.customer_confirmed_received ? <span className="badge badge-green">Parcel Received</span> : order.customer_reported_not_received ? <span className="badge badge-red">Not Arrived</span> : <span className="text-xs text-gray">Waiting</span>}</td>
                                   <td className="text-sm text-gray">{formatDateTime(order.created_at)}</td>
                                   <td>
-                                    <select
-                                      className="form-input form-select"
-                                      style={{ padding: '6px 30px 6px 10px', fontSize: 13, minWidth: 140 }}
-                                      value={order.status}
-                                      onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
-                                    >
-                                      {STATUSES.map((s) => <option key={s} value={s}>{formatStatus(s)}</option>)}
-                                    </select>
+                                    <PostalShippingControls order={order} onUpdated={loadOrders} />
                                   </td>
                                 </tr>
                               ))}

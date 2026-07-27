@@ -145,6 +145,24 @@
   }
   .notif-item:hover { background: var(--green-50); }
   .notif-item:last-child { border-bottom: none; }
+  .notif-header-actions { display: flex; align-items: center; gap: 8px; }
+  .notif-clear-button { color: var(--red-500); }
+  .notif-item-row { position: relative; border-bottom: 1px solid var(--gray-100); }
+  .notif-item-row .notif-item { padding-right: 50px; border-bottom: 0; }
+  .notif-delete-button {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 8px;
+    color: var(--gray-400);
+    transform: translateY(-50%);
+    transition: var(--transition);
+  }
+  .notif-delete-button:hover { color: var(--red-600); background: #fef2f2; }
   
   /* Mobile Menu */
   .mobile-menu {
@@ -178,4 +196,80 @@
     .navbar-auth { display: none; }
     .navbar-mobile-toggle { display: flex; }
     .mobile-menu { display: flex; }
+  }
+
+  /* Landing-page treatment: scoped so dashboards and storefront pages retain their UI. */
+  .navbar.navbar-home {
+    height: 78px;
+    background: rgba(7, 63, 43, .97);
+    border-bottom-color: rgba(255,255,255,.08);
+    box-shadow: 0 10px 35px rgba(5, 43, 29, .12);
+  }
+  .navbar-home .navbar-logo-img {
+    width: 50px;
+    height: 50px;
+    padding: 3px;
+    object-fit: contain;
+    border: 1px solid rgba(255,255,255,.28);
+    border-radius: 50%;
+    background: white;
+  }
+  .navbar-home .navbar-links {
+    justify-content: flex-start;
+    margin-left: 2px;
+  }
+  .navbar-home .navbar-link {
+    color: rgba(255,255,255,.72);
+  }
+  .navbar-home .navbar-link:hover {
+    color: white;
+    background: rgba(255,255,255,.08);
+  }
+  .navbar-home .navbar-link.active {
+    color: white;
+    background: rgba(139,195,74,.15);
+  }
+  .navbar-home .searchbar-compact {
+    width: 265px;
+    color: rgba(255,255,255,.62);
+    background: rgba(255,255,255,.1);
+    border-color: rgba(255,255,255,.1);
+  }
+  .navbar-home .searchbar-compact input {
+    width: 220px;
+    color: white;
+    font-size: 12px;
+  }
+  .navbar-home .searchbar-compact input::placeholder { color: rgba(255,255,255,.48); }
+  .navbar-home .searchbar-compact:focus-within {
+    background: rgba(255,255,255,.14);
+    border-color: rgba(139,195,74,.65);
+  }
+  .navbar-home .navbar-auth .btn-secondary {
+    color: white;
+    border-color: rgba(255,255,255,.45);
+  }
+  .navbar-home .navbar-auth .btn-secondary:hover {
+    color: var(--green-900);
+    background: white;
+  }
+  .navbar-home .navbar-auth .btn-primary {
+    color: #123f2d;
+    background: #b6dc8b;
+  }
+  .navbar-home .navbar-auth .btn-primary:hover {
+    background: #c6e6a2;
+  }
+  .navbar-home .navbar-mobile-toggle,
+  .navbar-home .navbar-icon-btn { color: white; }
+  .navbar-home .navbar-avatar { border-color: rgba(255,255,255,.65); }
+
+  @media (max-width: 1060px) {
+    .navbar-home .searchbar-compact { display: none; }
+  }
+
+  @media (max-width: 768px) {
+    .navbar.navbar-home { height: 70px; }
+    .navbar-home .navbar-logo-img { width: 44px; height: 44px; }
+    .navbar-home + .mobile-menu { background: white; }
   }

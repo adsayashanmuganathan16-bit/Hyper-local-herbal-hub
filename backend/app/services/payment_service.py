@@ -7,7 +7,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 class PaymentService:
     """Stripe payment integration service."""
 
-    async def create_payment_intent(self, amount: float, currency: str = "inr", metadata: dict = None) -> dict:
+    async def create_payment_intent(self, amount: float, currency: str = "lkr", metadata: dict = None) -> dict:
         """Create a Stripe payment intent."""
         try:
             intent = stripe.PaymentIntent.create(
@@ -45,7 +45,7 @@ class PaymentService:
         """Generate invoice data (in production, use a PDF service)."""
         items_text = ""
         for item in order_data.get("items", []):
-            items_text += f"{item['name']} x{item['quantity']} - ₹{item['price'] * item['quantity']:.2f}\n"
+            items_text += f"{item['name']} x{item['quantity']} - Rs. {item['price'] * item['quantity']:,.2f}\n"
 
         invoice = f"""
         ══════════════════════════════════════
@@ -56,11 +56,11 @@ class PaymentService:
         ────────────────────────────────────
         {items_text}
         ────────────────────────────────────
-        Subtotal:    ₹{order_data.get('total_amount', 0):.2f}
-        Discount:    -₹{order_data.get('discount', 0):.2f}
-        Delivery:    ₹{order_data.get('delivery_charge', 0):.2f}
+        Subtotal:    Rs. {order_data.get('total_amount', 0):,.2f}
+        Discount:    -Rs. {order_data.get('discount', 0):,.2f}
+        Delivery:    Rs. {order_data.get('delivery_charge', 0):,.2f}
         ────────────────────────────────────
-        TOTAL:       ₹{order_data.get('final_amount', 0):.2f}
+        TOTAL:       Rs. {order_data.get('final_amount', 0):,.2f}
         ══════════════════════════════════════
         Thank you for choosing Herbal Hub!
         Pure Herbs, Pure Life 🌱

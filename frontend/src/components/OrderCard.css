@@ -51,6 +51,42 @@
     justify-content: space-between;
     padding: 4px 0;
   }
+  .order-review-link {
+    display: block;
+    width: fit-content;
+    margin-top: 7px;
+    padding: 5px 10px;
+    border: 1px solid var(--green-300);
+    border-radius: var(--radius-full);
+    color: var(--green-800);
+    background: var(--green-50);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .order-review-link:hover { color: var(--white); background: var(--green-800); }
+  .order-review-complete {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 3px;
+    color: var(--gray-500);
+    font-size: 12px;
+  }
+  .order-review-form {
+    display: grid;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 18px;
+    border: 1px solid var(--green-200);
+    border-radius: var(--radius-md);
+    background: var(--green-50);
+  }
+  .order-review-heading { display: flex; justify-content: space-between; gap: 16px; }
+  .order-review-heading p { color: var(--gray-500); font-size: 12px; }
+  .review-star-input { display: flex; align-items: center; gap: 3px; }
+  .review-star-input button { display: flex; padding: 2px; color: var(--gray-300); }
+  .review-star-input svg.active { color: #eab308; fill: #eab308; }
+  .review-star-input span { margin-left: 8px; color: var(--gray-500); font-size: 12px; }
   .order-card-footer {
     display: flex;
     align-items: center;

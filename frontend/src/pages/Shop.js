@@ -117,11 +117,11 @@ export default function Shop() {
                   </select>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Min Price (₹)</label>
+                  <label className="form-label">Min Price (Rs.)</label>
                   <input type="number" className="form-input" placeholder="0" value={minPrice} onChange={(e) => updateParam('min_price', e.target.value)} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Max Price (₹)</label>
+                  <label className="form-label">Max Price (Rs.)</label>
                   <input type="number" className="form-input" placeholder="9999" value={maxPrice} onChange={(e) => updateParam('max_price', e.target.value)} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -145,10 +145,10 @@ export default function Shop() {
                 </span>
               )}
               {minPrice && (
-                <span className="filter-tag">Min: ₹{minPrice} <FiX size={12} onClick={() => updateParam('min_price', '')} /></span>
+                <span className="filter-tag">Min: Rs. {minPrice} <FiX size={12} onClick={() => updateParam('min_price', '')} /></span>
               )}
               {maxPrice && (
-                <span className="filter-tag">Max: ₹{maxPrice} <FiX size={12} onClick={() => updateParam('max_price', '')} /></span>
+                <span className="filter-tag">Max: Rs. {maxPrice} <FiX size={12} onClick={() => updateParam('max_price', '')} /></span>
               )}
               {availableOnly && (
                 <span className="filter-tag">In Stock <FiX size={12} onClick={() => updateParam('available', '')} /></span>

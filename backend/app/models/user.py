@@ -1,13 +1,15 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
 class UserRole(str, Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
+    SELLER = "seller"
     DELIVERY_PARTNER = "delivery_partner"
+    DELIVERY_STAFF = "delivery_staff"
 
 
 class UserCreate(BaseModel):
@@ -16,6 +18,15 @@ class UserCreate(BaseModel):
     phone: str = Field(..., min_length=10, max_length=15)
     password: str = Field(..., min_length=6)
     role: UserRole = UserRole.CUSTOMER
+    store_name: Optional[str] = Field(default=None, min_length=2, max_length=180)
+    owner_name: Optional[str] = Field(default=None, min_length=2, max_length=100)
+    store_address: Optional[str] = Field(default=None, min_length=5, max_length=500)
+
+    @model_validator(mode="after")
+    def seller_fields(self):
+        if self.role == UserRole.SELLER and not all((self.store_name, self.owner_name, self.store_address)):
+            raise ValueError("Store name, owner name and store address are required for sellers")
+        return self
 
 
 class UserLogin(BaseModel):
@@ -53,6 +64,7 @@ class RefreshTokenRequest(BaseModel):
 
 
 class UserInDB(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     id: str = Field(alias="_id")
     name: str
     email: str
@@ -62,9 +74,5 @@ class UserInDB(BaseModel):
     profile_image: Optional[str] = None
     is_active: bool = True
     email_verified: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        populate_by_name = True
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

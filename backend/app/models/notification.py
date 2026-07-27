@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -13,6 +13,7 @@ class NotificationTypeEnum(str, Enum):
 
 
 class NotificationInDB(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     id: str = Field(alias="_id")
     user_id: str
     type: NotificationTypeEnum
@@ -20,8 +21,4 @@ class NotificationInDB(BaseModel):
     message: str
     is_read: bool = False
     link: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        populate_by_name = True
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

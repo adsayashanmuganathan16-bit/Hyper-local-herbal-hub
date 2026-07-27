@@ -11,6 +11,7 @@ export default function Cart() {
 
   const deliveryCharge = totalAmount >= 500 ? 0 : 49;
   const finalAmount = totalAmount + deliveryCharge;
+  const sellerGroups = Object.values(items.reduce((groups,item)=>{const key=item.seller_id||'unknown';if(!groups[key])groups[key]={name:item.seller_name||'Seller',items:[],subtotal:0};groups[key].items.push(item);groups[key].subtotal+=(item.discount_price||item.price)*item.quantity;return groups;},{}));
 
   if (items.length === 0) {
     return (
@@ -45,14 +46,9 @@ export default function Cart() {
                   <span>⚠️ Some items in your cart require a prescription. Please <Link to="/prescriptions">upload it</Link> before checkout.</span>
                 </div>
               )}
-              {items.map((item) => (
-                <CartItem
-                  key={item.medicine_id}
-                  item={item}
-                  onUpdateQty={updateQuantity}
-                  onRemove={removeFromCart}
-                />
-              ))}
+              {sellerGroups.map(group=><div className="admin-card mb-4" key={group.name}><h3>{group.name}</h3>
+                {group.items.map(item=><CartItem key={item.medicine_id} item={item} onUpdateQty={updateQuantity} onRemove={removeFromCart}/>)}
+                <div className="cart-summary-row"><b>Seller subtotal</b><b>{formatCurrency(group.subtotal)}</b></div></div>)}
             </div>
 
             <div className="cart-summary-col">

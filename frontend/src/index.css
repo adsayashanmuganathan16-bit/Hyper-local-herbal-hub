@@ -1,15 +1,19 @@
 /* ===== CSS Variables - White & Green Theme ===== */
 :root {
-    --green-900: #1b4332;
-    --green-800: #2d6a4f;
-    --green-700: #40916c;
-    --green-600: #52b788;
-    --green-500: #74c69d;
-    --green-400: #95d5b2;
-    --green-300: #b7e4c7;
-    --green-200: #d8f3dc;
-    --green-100: #edf6f0;
-    --green-50: #f5faf7;
+    --green-900: #143d2b;
+    --green-800: #1d5239;
+    --green-700: #286b4b;
+    --green-600: #3b8260;
+    --green-500: #5e9d79;
+    --green-400: #86b397;
+    --green-300: #b4cfbd;
+    --green-200: #d8e7dc;
+    --green-100: #edf4ef;
+    --green-50: #f7faf7;
+    --cream: #fbf8ef;
+    --cream-deep: #f2ead8;
+    --gold: #c9923d;
+    --gold-dark: #9b6826;
     --white: #ffffff;
     --gray-50: #fafafa;
     --gray-100: #f5f5f5;
@@ -26,16 +30,16 @@
     --yellow-500: #eab308;
     --orange-500: #f97316;
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
-    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
-    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+    --shadow-md: 0 8px 24px rgba(20,61,43,0.08);
+    --shadow-lg: 0 16px 38px rgba(20,61,43,0.11);
+    --shadow-xl: 0 26px 60px rgba(20,61,43,0.15);
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 16px;
     --radius-xl: 24px;
     --radius-full: 9999px;
-    --font-display: 'Playfair Display', Georgia, serif;
-    --font-body: 'DM Sans', -apple-system, sans-serif;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
@@ -44,17 +48,39 @@
   html { scroll-behavior: smooth; }
   body {
     font-family: var(--font-body);
+    font-variant-numeric: lining-nums proportional-nums;
     color: var(--gray-800);
-    background: var(--white);
+    background: #fcfdfb;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+  }
+
+  /* Keep functional numbers clean and easy to scan across the storefront. */
+  :where(
+    .stat-value,
+    .hero-stat-value,
+    [class*="price"],
+    [class*="amount"],
+    [class*="total"],
+    [class*="metric"],
+    .data-table td,
+    input[type="number"]
+  ) {
+    font-family: var(--font-body);
+    font-variant-numeric: lining-nums tabular-nums;
+    font-style: normal;
+    letter-spacing: 0;
   }
   a { text-decoration: none; color: inherit; }
   img { max-width: 100%; display: block; }
   button { cursor: pointer; border: none; background: none; font-family: inherit; }
   input, select, textarea { font-family: inherit; font-size: inherit; }
   ul, ol { list-style: none; }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 3px solid rgba(201,146,61,.35);
+    outline-offset: 3px;
+  }
   
   /* ===== Utility Classes ===== */
   .container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
@@ -75,7 +101,7 @@
     border: 2px solid transparent;
   }
   .btn-primary {
-    background: var(--green-800);
+    background: linear-gradient(135deg, var(--green-700), var(--green-900));
     color: var(--white);
   }
   .btn-primary:hover {
@@ -162,7 +188,7 @@
   .card {
     background: var(--white);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--gray-200);
+    border: 1px solid var(--green-200);
     overflow: hidden;
     transition: var(--transition);
   }
@@ -191,6 +217,7 @@
     font-family: var(--font-display);
     font-size: clamp(28px, 4vw, 42px);
     font-weight: 700;
+    letter-spacing: -0.02em;
     color: var(--green-900);
     margin-bottom: 12px;
   }

@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -24,6 +24,7 @@ class MedicineCreate(BaseModel):
     price: float = Field(..., gt=0)
     discount_price: Optional[float] = Field(None, gt=0)
     stock: int = Field(..., ge=0)
+    weight_grams: int = Field(..., gt=0, le=2000)
     requires_prescription: bool = False
     manufacturer: str
     ingredients: List[str] = []
@@ -41,6 +42,7 @@ class MedicineUpdate(BaseModel):
     price: Optional[float] = Field(None, gt=0)
     discount_price: Optional[float] = None
     stock: Optional[int] = Field(None, ge=0)
+    weight_grams: Optional[int] = Field(None, gt=0, le=2000)
     requires_prescription: Optional[bool] = None
     manufacturer: Optional[str] = None
     ingredients: Optional[List[str]] = None
@@ -53,6 +55,7 @@ class MedicineUpdate(BaseModel):
 
 
 class MedicineInDB(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     id: str = Field(alias="_id")
     name: str
     description: str
@@ -60,8 +63,11 @@ class MedicineInDB(BaseModel):
     price: float
     discount_price: Optional[float] = None
     stock: int
+    weight_grams: int = Field(gt=0, le=2000)
     requires_prescription: bool = False
     manufacturer: str
+    seller_id: Optional[str] = None
+    seller_name: Optional[str] = None
     ingredients: List[str] = []
     dosage: Optional[str] = None
     benefits: List[str] = []
@@ -71,9 +77,5 @@ class MedicineInDB(BaseModel):
     average_rating: float = 0.0
     review_count: int = 0
     is_active: bool = True
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        populate_by_name = True
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

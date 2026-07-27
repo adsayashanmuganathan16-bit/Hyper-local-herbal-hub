@@ -1,7 +1,8 @@
+from app.utils.time import utc_now
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Query
 from datetime import datetime, timedelta
 from app.database import get_db
-from app.middleware.auth_middleware import get_current_user, require_admin
+from app.middleware.auth_middleware import require_customer, require_admin
 from app.services.s3_service import s3_service
 from app.utils.helpers import serialize_doc, paginate
 
@@ -12,7 +13,7 @@ router = APIRouter(prefix="/api/prescriptions", tags=["Prescription Management"]
 async def upload_prescription(
     file: UploadFile = File(...),
     notes: str = None,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_customer),
 ):
     """Upload a prescription image."""
     db = get_db()
@@ -38,9 +39,9 @@ async def upload_prescription(
         "verified_by": None,
         "rejection_reason": None,
         "notes": notes,
-        "created_at": datetime.utcnow(),
+        "created_at": utc_now(),
         "verified_at": None,
-        "expires_at": datetime.utcnow() + timedelta(days=90),
+        "expires_at": utc_now() + timedelta(days=90),
     }
 
     result = await db.prescriptions.insert_one(doc)
@@ -51,7 +52,7 @@ async def upload_prescription(
 @router.get("/")
 async def get_my_prescriptions(
     page: int = Query(1, ge=1),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_customer),
 ):
     """Get current user's prescriptions."""
     db = get_db()
@@ -63,7 +64,7 @@ async def get_my_prescriptions(
 
 
 @router.get("/{prescription_id}")
-async def get_prescription(prescription_id: str, current_user: dict = Depends(get_current_user)):
+async def get_prescription(prescription_id: str, current_user: dict = Depends(require_customer)):
     """Get a specific prescription."""
     db = get_db()
     from bson import ObjectId
@@ -111,8 +112,8 @@ async def verify_prescription(
     update = {
         "status": new_status,
         "verified_by": current_user["_id"],
-        "verified_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "verified_at": utc_now(),
+        "updated_at": utc_now(),
     }
     if new_status == "rejected" and body.get("rejection_reason"):
         update["rejection_reason"] = body["rejection_reason"]
@@ -131,7 +132,7 @@ async def verify_prescription(
             "message": f"Your prescription has been {new_status}." + (f" Reason: {body.get('rejection_reason', '')}" if new_status == "rejected" else ""),
             "is_read": False,
             "link": "/prescriptions",
-            "created_at": datetime.utcnow(),
+            "created_at": utc_now(),
         })
 
         # Send email

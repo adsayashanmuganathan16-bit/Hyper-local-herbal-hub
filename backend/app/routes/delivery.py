@@ -1,3 +1,4 @@
+from app.utils.time import utc_now
 from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime
 from app.database import get_db
@@ -40,14 +41,14 @@ async def update_delivery_status(
 
     update = {
         "status": new_status,
-        "updated_at": datetime.utcnow(),
+        "updated_at": utc_now(),
     }
     if body.get("current_location"):
         update["current_location"] = body["current_location"]
     if body.get("notes"):
         update["notes"] = body["notes"]
     if new_status == "delivered":
-        update["actual_delivery"] = datetime.utcnow()
+        update["actual_delivery"] = utc_now()
 
     result = await db.deliveries.update_one(
         {"_id": ObjectId(delivery_id), "delivery_partner_id": current_user["_id"]},
@@ -61,7 +62,7 @@ async def update_delivery_status(
     if delivery and new_status == "delivered":
         await db.orders.update_one(
             {"_id": delivery["order_id"]},
-            {"$set": {"status": "delivered", "updated_at": datetime.utcnow()}},
+            {"$set": {"status": "delivered", "updated_at": utc_now()}},
         )
         # Notify user
         order = await db.orders.find_one({"_id": delivery["order_id"]})
@@ -73,7 +74,7 @@ async def update_delivery_status(
                 "message": f"Your order #{delivery['order_id'][:8]} has been delivered!",
                 "is_read": False,
                 "link": f"/orders/{delivery['order_id']}",
-                "created_at": datetime.utcnow(),
+                "created_at": utc_now(),
             })
 
     return {"message": f"Delivery status updated to {new_status}"}
@@ -111,6 +112,6 @@ async def assign_delivery_partner(
 
     await db.deliveries.update_one(
         {"_id": ObjectId(delivery_id)},
-        {"$set": {"delivery_partner_id": body["delivery_partner_id"], "updated_at": datetime.utcnow()}},
+        {"$set": {"delivery_partner_id": body["delivery_partner_id"], "updated_at": utc_now()}},
     )
     return {"message": "Delivery partner assigned"}

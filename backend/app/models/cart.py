@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class CartItem(BaseModel):
@@ -14,13 +14,10 @@ class CartItem(BaseModel):
 
 
 class CartInDB(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     id: str = Field(alias="_id")
     user_id: str
     items: List[CartItem] = []
     total_items: int = 0
     total_amount: float = 0.0
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        populate_by_name = True
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
