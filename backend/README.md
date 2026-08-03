@@ -69,10 +69,26 @@ Use the first value for `SECRET_KEY` and the second for
 `DATA_ENCRYPTION_KEY`. Keep the encryption key stable because changing it
 prevents existing encrypted seller data from being decrypted.
 
-## Run
+## Start the backend
+
+From the repository root, set up and start the backend with:
 
 ```bash
-./.venv/bin/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Edit `.env` with the required configuration before running the final command.
+After the initial setup, start the backend with:
+
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Available locally:
