@@ -17,6 +17,7 @@ export default function Profile() {
     pincode: user?.address?.pincode || '',
   });
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
   const [changingPw, setChangingPw] = useState(false);
 
@@ -57,12 +58,27 @@ export default function Profile() {
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const supportedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!supportedTypes.includes(file.type)) {
+      toast.error('Please choose a JPEG, PNG, or WebP image');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Profile images must be 5 MB or smaller');
+      e.target.value = '';
+      return;
+    }
     try {
+      setUploadingImage(true);
       const { data } = await authApi.uploadProfileImage(file);
-      updateUser({ ...user, profile_image: data.image_url });
+      updateUser(data.user || { ...user, profile_image: data.image_url });
       toast.success('Profile image updated');
     } catch (err) {
-      toast.error('Image upload failed');
+      toast.error(err.response?.data?.detail || 'Image upload failed');
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
     }
   };
 
@@ -74,13 +90,19 @@ export default function Profile() {
 
           <div className="profile-card">
             <div className="profile-avatar-section">
-              <div className="profile-avatar-large" onClick={() => document.getElementById('profile-img-input')?.click()}>
+              <div
+                className="profile-avatar-large"
+                onClick={() => !uploadingImage && document.getElementById('profile-img-input')?.click()}
+                aria-busy={uploadingImage}
+              >
                 {user?.profile_image ? (
                   <img src={user.profile_image} alt="" className="avatar-img" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                 ) : (
                   <span style={{ fontSize: 48, fontWeight: 700, color: 'var(--green-800)' }}>{user?.name?.[0]?.toUpperCase()}</span>
                 )}
-                <div className="profile-avatar-overlay"><FiCamera size={20} /></div>
+                <div className="profile-avatar-overlay">
+                  {uploadingImage ? 'Uploading…' : <FiCamera size={20} />}
+                </div>
               </div>
               <input id="profile-img-input" type="file" accept="image/*" hidden onChange={handleImageUpload} />
               <h2 className="font-display" style={{ fontSize: 22, color: 'var(--green-900)' }}>{user?.name}</h2>

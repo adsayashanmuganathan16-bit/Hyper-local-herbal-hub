@@ -100,6 +100,8 @@ class Settings:
     DATA_ENCRYPTION_KEY = os.getenv("DATA_ENCRYPTION_KEY", "")
     DEFAULT_COMMISSION_PERCENT = os.getenv("DEFAULT_COMMISSION_PERCENT", "10.00")
     PAYOUT_MODE = os.getenv("PAYOUT_MODE", "manual")
+    # Development/demo convenience only. Production must leave this disabled.
+    AUTO_VERIFY_SELLERS = os.getenv("AUTO_VERIFY_SELLERS", "false").lower() == "true"
 
     PAYHERE_MERCHANT_ID = os.getenv("PAYHERE_MERCHANT_ID", "")
     PAYHERE_MERCHANT_SECRET = os.getenv("PAYHERE_MERCHANT_SECRET", "")
@@ -120,10 +122,20 @@ class Settings:
     ONEPAY_API_BASE_URL = os.getenv("ONEPAY_API_BASE_URL", "https://api.onepay.lk")
     ONEPAY_TIMEOUT_SECONDS = _number("ONEPAY_TIMEOUT_SECONDS", 15)
     MOCK_PAYMENT_MERCHANT_NAME = os.getenv("MOCK_PAYMENT_MERCHANT_NAME", "Herbal Hub")
+    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+    STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    STRIPE_SUCCESS_URL = os.getenv(
+        "STRIPE_SUCCESS_URL",
+        "http://localhost:3000/orders/{order_id}?payment=success&session_id={CHECKOUT_SESSION_ID}",
+    )
+    STRIPE_CANCEL_URL = os.getenv(
+        "STRIPE_CANCEL_URL",
+        "http://localhost:3000/orders/{order_id}?payment=cancelled",
+    )
     PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "mock").strip().lower()
 
     def validate_payment_configuration(self) -> None:
-        supported = {"mock", "payhere", "onepay"}
+        supported = {"mock", "payhere", "onepay", "stripe"}
         if self.PAYMENT_PROVIDER not in supported:
             raise RuntimeError(
                 f"PAYMENT_PROVIDER must be one of: {', '.join(sorted(supported))}."
@@ -138,12 +150,25 @@ class Settings:
                 "ONEPAY_APP_TOKEN": self.ONEPAY_APP_TOKEN,
                 "ONEPAY_HASH_SALT": self.ONEPAY_HASH_SALT,
             },
+            "stripe": {
+                "STRIPE_SECRET_KEY": self.STRIPE_SECRET_KEY,
+                "STRIPE_WEBHOOK_SECRET": self.STRIPE_WEBHOOK_SECRET,
+            },
         }.get(self.PAYMENT_PROVIDER, {})
         missing = [name for name, value in required.items() if not value.strip()]
         if missing:
             raise RuntimeError(
                 f"PAYMENT_PROVIDER={self.PAYMENT_PROVIDER} requires: {', '.join(missing)}."
             )
+        if self.PAYMENT_PROVIDER == "stripe":
+            if not self.STRIPE_SECRET_KEY.startswith(("sk_test_", "sk_live_")):
+                raise RuntimeError("STRIPE_SECRET_KEY must be a Stripe secret key (sk_test_ or sk_live_).")
+            if not self.STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
+                raise RuntimeError("STRIPE_WEBHOOK_SECRET must be a Stripe endpoint secret (whsec_).")
+            if "{order_id}" not in self.STRIPE_SUCCESS_URL or "{CHECKOUT_SESSION_ID}" not in self.STRIPE_SUCCESS_URL:
+                raise RuntimeError("STRIPE_SUCCESS_URL must contain {order_id} and {CHECKOUT_SESSION_ID}.")
+            if "{order_id}" not in self.STRIPE_CANCEL_URL:
+                raise RuntimeError("STRIPE_CANCEL_URL must contain {order_id}.")
 
     def validate_storage_configuration(self) -> None:
         if self.PROFILE_IMAGE_STORAGE not in {"local", "s3"}:

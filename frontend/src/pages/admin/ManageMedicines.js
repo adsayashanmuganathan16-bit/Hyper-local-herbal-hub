@@ -1,17 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
+import React, { useState, useEffect, useRef } from 'react';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiUpload, FiX } from 'react-icons/fi';
 import { medicineApi } from '../../api/medicineApi';
 import { formatCurrency, formatStatus, truncateText } from '../../utils/helpers';
 import { toast } from 'react-toastify';
 import Loading from '../../components/Loading';
 import { sellerApi } from '../../api/sellerApi';
+import { productImageUrl, useProductImageFallback } from '../../utils/productImage';
 
-export default function ManageMedicines({ sellerMode = false }) {
+export default function ManageMedicines({ sellerMode = false, initialAddOpen = false }) {
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [imageFiles, setImageFiles] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const pendingImagesRef = useRef([]);
   const [form, setForm] = useState({ name: '', description: '', category: 'Ayurvedic', price: '', discount_price: '', stock: '', weight_grams: '', manufacturer: '', requires_prescription: false, dosage: '', benefits: '', ingredients: '' });
 
   const fetchMedicines = async () => {
@@ -25,10 +31,46 @@ export default function ManageMedicines({ sellerMode = false }) {
   };
 
   useEffect(() => { fetchMedicines(); }, [search, sellerMode]);
+  useEffect(() => {
+    if (initialAddOpen) setShowModal(true);
+  }, [initialAddOpen]);
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
+  };
+
+  const clearSelectedImages = () => {
+    imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    pendingImagesRef.current = [];
+    setImageFiles([]);
+    setImagePreviews([]);
+    setExistingImages([]);
+  };
+
+  const handleImagesChange = (e) => {
+    const selected = Array.from(e.target.files || []);
+    const supported = selected.filter((file) =>
+      ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+      && file.size <= 5 * 1024 * 1024
+    );
+    if (supported.length !== selected.length) {
+      toast.error('Use JPEG, PNG, or WebP images up to 5 MB each');
+    }
+    const limited = supported.slice(0, 5);
+    imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    pendingImagesRef.current = limited;
+    setImageFiles(limited);
+    setImagePreviews(limited.map((file) => URL.createObjectURL(file)));
+    e.target.value = '';
+  };
+
+  const removeSelectedImage = (index) => {
+    URL.revokeObjectURL(imagePreviews[index]);
+    const remainingFiles = pendingImagesRef.current.filter((_, itemIndex) => itemIndex !== index);
+    pendingImagesRef.current = remainingFiles;
+    setImageFiles(remainingFiles);
+    setImagePreviews((previews) => previews.filter((_, itemIndex) => itemIndex !== index));
   };
 
   const handleSubmit = async (e) => {
@@ -43,19 +85,28 @@ export default function ManageMedicines({ sellerMode = false }) {
       ingredients: form.ingredients ? form.ingredients.split(',').map((s) => s.trim()) : [],
     };
     try {
+      setSubmitting(true);
+      const filesToUpload = pendingImagesRef.current;
+      let productId = editId;
       if (editId) {
         await medicineApi.update(editId, payload);
-        toast.success('Product updated');
       } else {
-        await medicineApi.create(payload);
-        toast.success('Product created');
+        const { data } = await medicineApi.create(payload);
+        productId = data.id;
       }
+      if (filesToUpload.length) {
+        await medicineApi.uploadImages(productId, filesToUpload, true);
+      }
+      toast.success(editId ? 'Product updated' : 'Product created');
       setShowModal(false);
       setEditId(null);
+      clearSelectedImages();
       resetForm();
       fetchMedicines();
     } catch (err) {
-      toast.error(err.response?.data?.detail?.[0]?.msg || 'Operation failed');
+      toast.error(err.response?.data?.detail?.[0]?.msg || err.response?.data?.detail || 'Operation failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -67,6 +118,8 @@ export default function ManageMedicines({ sellerMode = false }) {
       manufacturer: med.manufacturer, requires_prescription: med.requires_prescription,
       dosage: med.dosage || '', benefits: med.benefits?.join(', ') || '', ingredients: med.ingredients?.join(', ') || '',
     });
+    clearSelectedImages();
+    setExistingImages(med.images || []);
     setEditId(med.id);
     setShowModal(true);
   };
@@ -80,7 +133,10 @@ export default function ManageMedicines({ sellerMode = false }) {
     } catch { toast.error('Delete failed'); }
   };
 
-  const resetForm = () => setForm({ name: '', description: '', category: 'Ayurvedic', price: '', discount_price: '', stock: '', weight_grams: '', manufacturer: '', requires_prescription: false, dosage: '', benefits: '', ingredients: '' });
+  const resetForm = () => {
+    setForm({ name: '', description: '', category: 'Ayurvedic', price: '', discount_price: '', stock: '', weight_grams: '', manufacturer: '', requires_prescription: false, dosage: '', benefits: '', ingredients: '' });
+    clearSelectedImages();
+  };
 
   return (
     <div className="page-wrapper">
@@ -115,7 +171,7 @@ export default function ManageMedicines({ sellerMode = false }) {
                       <tr key={med.id}>
                         <td>
                           <div className="flex items-center gap-3">
-                            <img src={med.images?.[0] || 'https://picsum.photos/seed/thumb/40/40.jpg'} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+                            <img src={productImageUrl(med)} alt="" onError={useProductImageFallback} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
                             <div>
                               <span className="font-medium text-sm">{truncateText(med.name, 30)}</span>
                               {med.requires_prescription && <span className="badge badge-yellow" style={{ marginLeft: 6, fontSize: 10 }}>Rx</span>}
@@ -172,13 +228,40 @@ export default function ManageMedicines({ sellerMode = false }) {
                     </div>
                     <div className="form-group"><label className="form-label">Ingredients (comma separated)</label><input name="ingredients" className="form-input" value={form.ingredients} onChange={handleFormChange} placeholder="Turmeric, Ashwagandha, Ginger" /></div>
                     <div className="form-group"><label className="form-label">Benefits (comma separated)</label><input name="benefits" className="form-input" value={form.benefits} onChange={handleFormChange} placeholder="Boosts immunity, Reduces stress" /></div>
+                    <div className="form-group">
+                      <label className="form-label">Product Images</label>
+                      <label className="product-image-picker">
+                        <FiUpload size={20} />
+                        <span>Choose up to 5 images</span>
+                        <small>JPEG, PNG, or WebP · maximum 5 MB each</small>
+                        <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={handleImagesChange} />
+                      </label>
+                      {imageFiles.length > 0 && (
+                        <p className="product-image-selection-status">
+                          {imageFiles.length} image{imageFiles.length === 1 ? '' : 's'} ready to upload
+                        </p>
+                      )}
+                      {(existingImages.length > 0 || imagePreviews.length > 0) && (
+                        <div className="product-image-previews">
+                          {existingImages.map((url) => <img key={url} src={productImageUrl(url)} alt="Existing product" onError={useProductImageFallback} />)}
+                          {imagePreviews.map((url, index) => (
+                            <div className="product-image-preview" key={url}>
+                              <img src={url} alt={`Selected product ${index + 1}`} />
+                              <button type="button" onClick={() => removeSelectedImage(index)} aria-label="Remove selected image"><FiX /></button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <label className="checkbox-wrap" style={{ marginBottom: 20 }}>
                       <input type="checkbox" name="requires_prescription" checked={form.requires_prescription} onChange={handleFormChange} />
                       Requires Prescription
                     </label>
                     <div className="flex gap-3" style={{ justifyContent: 'flex-end' }}>
                       <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowModal(false)}>Cancel</button>
-                      <button type="submit" className="btn btn-primary btn-sm">{editId ? 'Update' : 'Create'}</button>
+                      <button type="submit" className="btn btn-primary btn-sm" disabled={submitting}>
+                        {submitting ? 'Saving…' : (editId ? 'Update Product' : 'Create Product')}
+                      </button>
                     </div>
                   </form>
                 </div>

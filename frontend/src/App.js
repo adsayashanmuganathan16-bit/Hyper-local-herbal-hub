@@ -30,6 +30,7 @@ import './pages/admin/Analytics.css';
 import './pages/admin/NewsletterSubscribers.css';
 import './pages/admin/SupportInbox.css';
 import './styles/enhance.css';
+import './styles/premium-system.css';
 
 // Components
 import Navbar from './components/Navbar';
@@ -47,6 +48,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import Shop from './pages/Shop';
 import MedicineDetail from './pages/MedicineDetail';
 import Cart from './pages/Cart';
+import Wishlist from './pages/Wishlist';
 import Checkout from './pages/Checkout';
 import DemoPayment from './pages/DemoPayment';
 import Orders from './pages/Orders';
@@ -57,6 +59,7 @@ import IdentifyPlant from './pages/IdentifyPlant';
 import Contact from './pages/Contact';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsConditions from './pages/TermsConditions';
+import FAQ from './pages/FAQ';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
@@ -98,12 +101,14 @@ function App() {
           <Route path="/medicine/:id" element={<MedicineDetail />} />
           <Route path="/identify-plant" element={<IdentifyPlant />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/faq" element={<FAQ />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsConditions />} />
 
           {/* Protected Customer Routes */}
           <Route path="/customer/dashboard" element={<ProtectedRoute customerOnly><Navigate to="/shop" replace /></ProtectedRoute>} />
           <Route path="/cart" element={<ProtectedRoute customerOnly><Cart /></ProtectedRoute>} />
+          <Route path="/wishlist" element={<ProtectedRoute customerOnly><Wishlist /></ProtectedRoute>} />
           <Route path="/checkout" element={<ProtectedRoute customerOnly><Checkout /></ProtectedRoute>} />
           <Route path="/demo-payment" element={<ProtectedRoute customerOnly><DemoPayment /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute customerOnly><Orders /></ProtectedRoute>} />

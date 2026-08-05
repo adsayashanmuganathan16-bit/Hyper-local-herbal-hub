@@ -12,6 +12,10 @@ export const orderApi = {
   cancelOrder: (id) => api.put(`/api/orders/${id}/cancel`),
   createOrder: (data) => api.post('/api/checkout/create-order', data),
   verifyPayment: (orderId, data) => api.post(`/api/checkout/verify-payment/${orderId}`, data),
+  confirmStripePayment: (orderId, sessionId) => api.post(
+    `/api/payments/stripe/${orderId}/confirm`,
+    { session_id: sessionId }
+  ),
   getMockPayment: (orderId) => api.get(`/api/payments/mock/${orderId}`),
   payMock: (orderId, data) => api.post(`/api/payments/mock/${orderId}/pay`, data),
 };

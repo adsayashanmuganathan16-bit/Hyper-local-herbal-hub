@@ -13,7 +13,7 @@ const KEYS = {
   seedVersion: 'herbal_hub_seed_version',
 };
 
-const SEED_VERSION = '7';
+const SEED_VERSION = '8';
 
 export const CATEGORIES = [
   'Ayurvedic',
@@ -536,23 +536,15 @@ function ensureSeeded() {
   if (load(KEYS.seedVersion, null) === SEED_VERSION && localStorage.getItem(KEYS.medicines)) {
     return;
   }
-  const medicines = seedMedicines();
   const users = seedUsers();
-  medicines.forEach((medicine, index) => {
-    medicine.seller_id = index < 12 ? 'seller-demo' : null;
-    medicine.seller_name = index < 12 ? 'Green Roots Naturals' : 'Herbal Hub';
-  });
-  const reviews = seedReviews(medicines, users);
-  const orders = seedOrders(medicines, users);
-  const notifications = seedNotifications(users, orders);
-  const prescriptions = seedPrescriptions(users);
-  save(KEYS.medicines, medicines);
+  save(KEYS.medicines, []);
   save(KEYS.users, users);
-  save(KEYS.reviews, reviews);
+  save(KEYS.reviews, []);
   save(KEYS.carts, {});
-  save(KEYS.orders, orders);
-  save(KEYS.prescriptions, prescriptions);
-  save(KEYS.notifications, notifications);
+  save(KEYS.orders, []);
+  save(KEYS.prescriptions, []);
+  save(KEYS.notifications, []);
+  save(KEYS.subscribers, []);
   save(KEYS.seedVersion, SEED_VERSION);
 }
 

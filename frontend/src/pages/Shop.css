@@ -2,42 +2,43 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    margin-bottom: 24px;
+    margin-bottom: var(--space-3);
     flex-wrap: wrap;
-    gap: 16px;
+    gap: var(--space-2);
   }
-  .shop-controls { display: flex; gap: 8px; align-items: center; }
+  .shop-controls { display: flex; gap: var(--space-1); align-items: center; }
   .filter-panel {
-    background: var(--white);
-    border: 1px solid var(--gray-200);
-    border-radius: var(--radius-lg);
-    padding: 24px;
-    margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    padding: var(--space-3);
+    margin-bottom: var(--space-3);
+    box-shadow: var(--shadow-card);
   }
   .filter-panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: var(--space-2);
   }
   .filter-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    gap: var(--space-2);
   }
   .active-filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 20px;
+    gap: var(--space-1);
+    margin-bottom: var(--space-2);
   }
   .filter-tag {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     padding: 6px 14px;
-    background: var(--green-100);
-    color: var(--green-800);
+    background: var(--brand-100);
+    color: var(--brand-800);
     border-radius: var(--radius-full);
     font-size: 13px;
     font-weight: 600;

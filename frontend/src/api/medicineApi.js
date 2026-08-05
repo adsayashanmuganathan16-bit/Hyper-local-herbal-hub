@@ -8,11 +8,9 @@ export const medicineApi = {
   create: (data) => api.post('/api/medicines/', data),
   update: (id, data) => api.put(`/api/medicines/${id}`, data),
   delete: (id) => api.delete(`/api/medicines/${id}`),
-  uploadImages: (id, files) => {
+  uploadImages: (id, files, replace = true) => {
     const formData = new FormData();
     files.forEach((f) => formData.append('files', f));
-    return api.post(`/api/medicines/${id}/images`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return api.post(`/api/medicines/${id}/images?replace=${replace}`, formData);
   },
 };

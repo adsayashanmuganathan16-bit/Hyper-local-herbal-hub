@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { FiShoppingCart, FiUser, FiLogOut, FiMenu, FiX, FiBell, FiPackage, FiFileText, FiBarChart2, FiUsers, FiGrid, FiSearch, FiDollarSign, FiStar, FiMail, FiTrash2 } from 'react-icons/fi';
+import { FiShoppingCart, FiUser, FiLogOut, FiMenu, FiX, FiBell, FiPackage, FiFileText, FiBarChart2, FiUsers, FiGrid, FiSearch, FiDollarSign, FiStar, FiMail, FiTrash2, FiHeart } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { notificationApi } from '../api/notificationApi';
 import SearchBar from './SearchBar';
+import { formatDateTime } from '../utils/helpers';
+import { wishlistIds } from '../utils/wishlist';
 
 const LOGO_URL = process.env.PUBLIC_URL + '/logo.png';
 
@@ -18,6 +20,7 @@ export default function Navbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [wishlistCount, setWishlistCount] = useState(() => wishlistIds().length);
   const profileRef = useRef(null);
   const notifRef = useRef(null);
 
@@ -41,6 +44,12 @@ export default function Navbar() {
     const keepalive=setInterval(()=>socket.readyState===WebSocket.OPEN&&socket.send('ping'),25000);
     return()=>{clearInterval(keepalive);socket.close();};
   },[isAuthenticated]);
+
+  useEffect(() => {
+    const updateWishlistCount = (event) => setWishlistCount((event.detail || wishlistIds()).length);
+    window.addEventListener('herbal:wishlist', updateWishlistCount);
+    return () => window.removeEventListener('herbal:wishlist', updateWishlistCount);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -98,7 +107,7 @@ export default function Navbar() {
 
         {/* Right Section */}
         <div className="navbar-right">
-          <SearchBar compact placeholder="Search herbal products or nearby sellers..." />
+          <SearchBar compact placeholder="Search" />
 
           {isAuthenticated ? (
             <>
@@ -140,6 +149,7 @@ export default function Navbar() {
                               <div>
                                 <p className="font-medium text-sm">{n.title}</p>
                                 <p className="text-gray text-xs">{n.message}</p>
+                                {n.created_at && <time className="text-gray text-xs">{formatDateTime(n.created_at)}</time>}
                               </div>
                             </Link>
                             <button
@@ -159,6 +169,10 @@ export default function Navbar() {
               </div>
 
               {/* Cart */}
+              {isCustomer && <Link to="/wishlist" className="navbar-icon-btn" aria-label="Wishlist" title="Wishlist">
+                <FiHeart size={20} />
+                {wishlistCount > 0 && <span className="cart-badge">{wishlistCount}</span>}
+              </Link>}
               {isCustomer && <Link to="/cart" className="navbar-icon-btn cart-btn" aria-label="Shopping cart" title="Shopping cart">
                 <FiShoppingCart size={20} />
                 {totalItems > 0 && <span className="cart-badge">{totalItems}</span>}
@@ -185,6 +199,9 @@ export default function Navbar() {
                       </Link>
                       {isCustomer && <Link to="/orders" className="dropdown-item" onClick={() => setProfileOpen(false)}>
                         <FiPackage size={16} /> My Orders
+                      </Link>}
+                      {isCustomer && <Link to="/wishlist" className="dropdown-item" onClick={() => setProfileOpen(false)}>
+                        <FiHeart size={16} /> My Wishlist
                       </Link>}
                       {isCustomer && <Link to="/prescriptions" className="dropdown-item" onClick={() => setProfileOpen(false)}>
                         <FiFileText size={16} /> Prescriptions

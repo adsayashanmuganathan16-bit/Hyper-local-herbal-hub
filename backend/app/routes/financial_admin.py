@@ -34,23 +34,86 @@ async def audit(db, user: dict, action: str, entity: str, entity_id: str, reques
 
 @router.get("/sellers")
 async def sellers(_=Depends(require_admin)):
-    rows = await get_db().sellers.find({}, {"nic_encrypted": 0}).sort("created_at", -1).to_list(length=None)
-    return [serialize_doc(row) for row in rows]
+    db = get_db()
+    rows = await db.sellers.find({}, {"nic_encrypted": 0}).sort("created_at", -1).to_list(length=None)
+    result = []
+    for row in rows:
+        bank = await db.seller_bank_accounts.find_one({"seller_id": str(row["_id"])})
+        item = serialize_doc(row)
+        item["verification_status"] = row.get(
+            "verification_status",
+            "VERIFIED" if bank and bank.get("verified") else "PENDING",
+        )
+        result.append(item)
+    return result
 
 
 @router.post("/sellers/{seller_id}/{decision}")
 async def decide_seller(seller_id: str, decision: str, request: Request, user=Depends(require_admin)):
-    if decision not in {"approve", "reject"}:
-        raise HTTPException(422, "Decision must be approve or reject")
-    db, status = get_db(), "APPROVED" if decision == "approve" else "REJECTED"
-    result = await db.sellers.update_one({"_id": oid(seller_id)},
-                                         {"$set": {"approval_status": status, "updated_at": utc_now()}})
+    if decision not in {"approve", "reject", "request-changes"}:
+        raise HTTPException(422, "Decision must be approve, reject, or request-changes")
+    db, now = get_db(), utc_now()
+    verification_status = {
+        "approve": "VERIFIED",
+        "reject": "REJECTED",
+        "request-changes": "CHANGES_REQUESTED",
+    }[decision]
+    approval_status = {
+        "approve": "APPROVED",
+        "reject": "REJECTED",
+        "request-changes": "PENDING",
+    }[decision]
+    seller_fields = {
+        "approval_status": approval_status,
+        "verification_status": verification_status,
+        "updated_at": now,
+        "verified_at": now if decision == "approve" else None,
+        "verified_by": user["_id"] if decision == "approve" else None,
+    }
+    result = await db.sellers.update_one({"_id": oid(seller_id)}, {"$set": seller_fields})
     if not result.matched_count:
         raise HTTPException(404, "Seller not found")
-    await db.seller_bank_accounts.update_one({"seller_id": seller_id},
-                                             {"$set": {"verified": decision == "approve", "updated_at": utc_now()}})
+    await db.seller_bank_accounts.update_one({"seller_id": seller_id}, {"$set": {
+        "verified": decision == "approve",
+        "verification_status": verification_status,
+        "verified_at": now if decision == "approve" else None,
+        "verified_by": user["_id"] if decision == "approve" else None,
+        "updated_at": now,
+    }})
+    if decision == "approve":
+        from app.services.financial_order_service import create_payouts_for_paid_order
+        allocations = await db.seller_order_allocations.find(
+            {"seller_id": seller_id}, {"order_id": 1}
+        ).to_list(length=None)
+        for order_id in {row["order_id"] for row in allocations}:
+            payment = await db.payments.find_one({"order_id": order_id, "status": "PAID"})
+            if payment:
+                await create_payouts_for_paid_order(
+                    db, order_id, now, payment_reference=payment.get("transaction_id")
+                )
+    from app.services.financial_notification_service import create_financial_notification
+    seller = await db.sellers.find_one({"_id": oid(seller_id)})
+    if seller:
+        notification_copy = {
+            "approve": (
+                "Seller payment details verified",
+                "Your bank details are verified and your account is eligible for payouts.",
+            ),
+            "reject": (
+                "Seller payment details rejected",
+                "Your bank details were rejected. Please review and resubmit them.",
+            ),
+            "request-changes": (
+                "Changes requested for payment details",
+                "An administrator requested changes to your bank details. Please update and resubmit them.",
+            ),
+        }[decision]
+        await create_financial_notification(
+            seller["user_id"], notification_copy[0], notification_copy[1], "/seller/earnings"
+        )
     await audit(db, user, f"seller.{decision}", "seller", seller_id, request)
-    return {"id": seller_id, "approval_status": status}
+    return {"id": seller_id, "approval_status": approval_status,
+            "verification_status": verification_status}
 
 
 @router.get("/payments")
@@ -65,12 +128,25 @@ async def payouts(status: str | None = None, _=Depends(require_admin)):
     rows = await db.payouts.find(query).sort("created_at", -1).to_list(length=None)
     seller_ids = [ObjectId(row["seller_id"]) for row in rows if ObjectId.is_valid(row.get("seller_id", ""))]
     sellers_by_id = {str(row["_id"]): row for row in await db.sellers.find({"_id": {"$in": seller_ids}}).to_list(length=None)}
+    order_ids = list({row["order_id"] for row in rows})
+    payments_by_order = {
+        row["order_id"]: row
+        for row in await db.payments.find(
+            {"order_id": {"$in": order_ids}},
+            {"order_id": 1, "status": 1},
+        ).to_list(length=None)
+    }
     result = []
     for row in rows:
         seller = sellers_by_id.get(row.get("seller_id"), {})
         item = serialize_doc(row)
         item["seller_name"] = seller.get("name")
         item["business_name"] = seller.get("business_name")
+        item["payment_status"] = payments_by_order.get(row["order_id"], {}).get(
+            "status",
+            row.get("payment_status", "UNKNOWN"),
+        )
+        item["payout_status"] = row.get("payout_status", row["status"])
         result.append(item)
     return result
 
@@ -97,8 +173,10 @@ async def mark_paid(payout_id: str, data: ManualPayoutCompletion, request: Reque
     db, now = get_db(), utc_now()
     payout = await db.payouts.find_one_and_update(
         {"_id": oid(payout_id), "status": {"$in": ["PENDING", "READY_FOR_MANUAL_TRANSFER"]}},
-        {"$set": {"status": "PAID", "transaction_reference": data.transaction_reference,
-                  "paid_at": now, "updated_at": now}}, return_document=ReturnDocument.AFTER,
+        {"$set": {"status": "PAID", "payout_status": "PAID",
+                  "transaction_reference": data.transaction_reference,
+                  "paid_at": now, "paid_by": user["_id"], "updated_at": now}},
+        return_document=ReturnDocument.AFTER,
     )
     if not payout:
         existing = await db.payouts.find_one({"_id": oid(payout_id)})
@@ -123,7 +201,8 @@ async def retry_payout(payout_id: str, request: Request, user=Depends(require_ad
     db = get_db()
     payout = await db.payouts.find_one_and_update(
         {"_id": oid(payout_id), "status": "FAILED", "retry_count": {"$lt": 3}},
-        {"$set": {"status": "PENDING", "failure_reason": None, "updated_at": utc_now()}}, return_document=ReturnDocument.AFTER)
+        {"$set": {"status": "PENDING", "payout_status": "PENDING",
+                  "failure_reason": None, "updated_at": utc_now()}}, return_document=ReturnDocument.AFTER)
     if not payout:
         raise HTTPException(409, "Only failed payouts with fewer than three attempts can be retried")
     await audit(db, user, "payout.retry", "payout", payout_id, request)

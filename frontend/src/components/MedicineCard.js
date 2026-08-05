@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiShoppingCart, FiAlertCircle } from 'react-icons/fi';
+import { FiShoppingCart, FiAlertCircle, FiHeart } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, getDiscountPercent, truncateText } from '../utils/helpers';
 import { toast } from 'react-toastify';
 import ReviewStars from './ReviewStars';
-
-const PLACEHOLDER_IMG = 'https://picsum.photos/seed/herb-placeholder/400/400.jpg';
+import { isWishlisted, toggleWishlist } from '../utils/wishlist';
+import { productImageUrl, useProductImageFallback } from '../utils/productImage';
 
 export default function MedicineCard({ medicine }) {
   const { addToCart } = useCart();
   const { isAuthenticated, isCustomer } = useAuth();
   const [adding, setAdding] = useState(false);
+  const [wished, setWished] = useState(() => isWishlisted(medicine.id));
 
-  const image = medicine.images?.[0] || PLACEHOLDER_IMG;
+  const image = productImageUrl(medicine);
   const hasDiscount = medicine.discount_price && medicine.discount_price < medicine.price;
   const discountPercent = getDiscountPercent(medicine.price, medicine.discount_price);
   const outOfStock = medicine.stock <= 0;
@@ -36,7 +37,15 @@ export default function MedicineCard({ medicine }) {
   return (
     <Link to={`/medicine/${medicine.id}`} className="med-card">
       <div className="med-card-img-wrap">
-        <img src={image} alt={medicine.name} className="med-card-img" loading="lazy" />
+        <img src={image} alt={medicine.name} className="med-card-img" loading="lazy" onError={useProductImageFallback} />
+        <button
+          type="button"
+          className={`med-card-wishlist ${wished ? 'active' : ''}`}
+          aria-label={wished ? `Remove ${medicine.name} from wishlist` : `Add ${medicine.name} to wishlist`}
+          onClick={(event) => { event.preventDefault(); event.stopPropagation(); setWished(toggleWishlist(medicine.id)); toast.success(wished ? 'Removed from wishlist' : 'Saved to wishlist'); }}
+        >
+          <FiHeart />
+        </button>
         {hasDiscount && <span className="med-card-discount">-{discountPercent}%</span>}
         {medicine.requires_prescription && (
           <span className="med-card-rx">
@@ -44,6 +53,7 @@ export default function MedicineCard({ medicine }) {
           </span>
         )}
         {outOfStock && <div className="med-card-oots">Out of Stock</div>}
+        {!outOfStock && medicine.stock <= 10 && <span className="med-card-stock">Only {medicine.stock} left</span>}
       </div>
       <div className="med-card-body">
         <span className="med-card-category">{medicine.category?.replace(/_/g, ' ')}</span>

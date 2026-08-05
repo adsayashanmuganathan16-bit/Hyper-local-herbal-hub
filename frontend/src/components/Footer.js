@@ -109,6 +109,10 @@ export default function Footer() {
               Contact Us
             </Link>
 
+            <Link to="/faq" className="footer-link">
+              Frequently Asked Questions
+            </Link>
+
             <Link to="/privacy" className="footer-link">
               Privacy Policy
             </Link>
@@ -127,7 +131,7 @@ export default function Footer() {
             <form className="newsletter-form" onSubmit={handleSubscribe}>
               <input
                 type="email"
-                placeholder="Enter your email"
+                placeholder="Email address"
                 className="newsletter-input"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}

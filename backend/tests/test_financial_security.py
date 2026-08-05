@@ -13,6 +13,19 @@ def test_sensitive_values_are_encrypted(monkeypatch):
     assert decrypt_sensitive(encrypted) == "199012345678"
 
 
+def test_placeholder_encryption_key_uses_local_fallback(monkeypatch):
+    monkeypatch.setattr(settings, "DATA_ENCRYPTION_KEY", "your_fernet_encryption_key")
+    encrypted = encrypt_sensitive("1234567890")
+    assert encrypted != "1234567890"
+    assert decrypt_sensitive(encrypted) == "1234567890"
+
+
+def test_invalid_encryption_key_has_actionable_error(monkeypatch):
+    monkeypatch.setattr(settings, "DATA_ENCRYPTION_KEY", "not-a-fernet-key")
+    with pytest.raises(RuntimeError, match="valid Fernet key"):
+        encrypt_sensitive("1234567890")
+
+
 def test_onepay_fails_closed_until_configured(monkeypatch):
     monkeypatch.setattr(settings, "ONEPAY_APP_ID", "")
     monkeypatch.setattr(settings, "ONEPAY_APP_TOKEN", "")

@@ -1,7 +1,25 @@
-.app {
+html,
+body,
+#root {
+    min-height: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0;
+    background: var(--brand-900);
+  }
+
+  #root,
+  .app {
+    width: 100%;
+  }
+
+  .app {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    background: var(--canvas);
   }
   .main-content {
     flex: 1;
@@ -9,6 +27,51 @@
     background:
       radial-gradient(circle at 0 20%, rgba(180,207,189,.16), transparent 28rem),
       #fcfdfb;
+  }
+
+  .product-image-picker {
+    min-height: 112px;
+    padding: 20px;
+    border: 2px dashed var(--green-300);
+    border-radius: var(--radius-md);
+    background: var(--green-50);
+    color: var(--green-800);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    text-align: center;
+    transition: var(--transition);
+  }
+  .product-image-picker:hover { border-color: var(--green-600); background: var(--green-100); }
+  .product-image-picker span { font-weight: 700; font-size: 14px; }
+  .product-image-picker small { color: var(--gray-500); }
+  .product-image-selection-status {
+    margin-top: 8px;
+    color: var(--green-700);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .product-image-previews { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .product-image-previews > img,
+  .product-image-preview { width: 82px; height: 82px; border-radius: 10px; }
+  .product-image-previews img { width: 100%; height: 100%; border-radius: 10px; object-fit: cover; }
+  .product-image-preview { position: relative; }
+  .product-image-preview button {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--red-500);
+    color: var(--white);
+    box-shadow: var(--shadow-sm);
   }
   
   /* Page wrapper for consistent spacing */

@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.medicine import MedicineCreate, MedicineUpdate, CategoryEnum
 from app.middleware.auth_middleware import require_product_manager
 from app.services.s3_service import s3_service
-from app.utils.helpers import serialize_doc, paginate
+from app.utils.helpers import serialize_medicine, paginate
 
 router = APIRouter(prefix="/api/medicines", tags=["Medicines"])
 
@@ -86,7 +86,7 @@ async def search_medicines(
     await with_seller_locations(db, result["items"])
 
     # Serialize
-    result["items"] = [serialize_doc(m) for m in result["items"]]
+    result["items"] = [serialize_medicine(m) for m in result["items"]]
 
     return result
 
@@ -110,7 +110,7 @@ async def get_medicine(medicine_id: str):
     if not medicine:
         raise HTTPException(status_code=404, detail="Medicine not found")
     await with_seller_locations(db, [medicine])
-    return serialize_doc(medicine)
+    return serialize_medicine(medicine)
 
 
 @router.post("/", status_code=201)
@@ -178,6 +178,7 @@ async def delete_medicine(
 async def upload_medicine_images(
     medicine_id: str,
     files: List[UploadFile] = File(...),
+    replace: bool = Query(False),
     current_user: dict = Depends(require_product_manager),
 ):
     """Upload medicine images to S3."""
@@ -187,13 +188,21 @@ async def upload_medicine_images(
     image_urls = []
     for file in files:
         content = await file.read()
-        url = await s3_service.upload_image(content, "medicines", file.content_type)
+        url = await s3_service.upload_image(content, "products", file.content_type)
         image_urls.append(url)
 
     query = {"_id": ObjectId(medicine_id)}
     if current_user.get("role") == "seller":
         query["seller_id"] = current_user["_id"]
-    result = await db.medicines.update_one(query, {"$push": {"images": {"$each": image_urls}}})
+    image_update = (
+        {"$set": {"images": image_urls, "updated_at": utc_now()}}
+        if replace
+        else {
+            "$push": {"images": {"$each": image_urls}},
+            "$set": {"updated_at": utc_now()},
+        }
+    )
+    result = await db.medicines.update_one(query, image_update)
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Medicine not found")
     return {"message": f"{len(image_urls)} images uploaded", "urls": image_urls}
@@ -208,4 +217,4 @@ async def get_featured_medicines():
     ).sort([("average_rating", -1)]).limit(8)
     medicines = await cursor.to_list(length=None)
     await with_seller_locations(db, medicines)
-    return [serialize_doc(m) for m in medicines]
+    return [serialize_medicine(m) for m in medicines]

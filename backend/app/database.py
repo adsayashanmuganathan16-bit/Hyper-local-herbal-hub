@@ -93,6 +93,8 @@ async def connect_db():
     await db.sellers.create_index("user_id", unique=True)
     await db.sellers.create_index("email", unique=True)
     await db.seller_bank_accounts.create_index("seller_id", unique=True)
+    await db.wishlists.create_index([("user_id", 1), ("medicine_id", 1)], unique=True)
+    await db.wishlists.create_index([("user_id", 1), ("created_at", -1)])
     await db.financial_orders.create_index("order_id", unique=True)
     await db.financial_orders.create_index("customer_id")
     await db.seller_order_allocations.create_index([("order_id", 1), ("seller_id", 1)], unique=True)
@@ -111,9 +113,30 @@ async def connect_db():
         "transaction_id", unique=True,
         partialFilterExpression=desired_filter,
     )
+    await db.payments.create_index(
+        "stripe_event_id", unique=True,
+        partialFilterExpression={"stripe_event_id": {"$type": "string"}},
+    )
     await db.payouts.create_index("allocation_id", unique=True)
+    await db.payouts.create_index([("order_id", 1), ("seller_id", 1)], unique=True)
+    await db.payouts.create_index(
+        [("stripe_checkout_session_id", 1), ("seller_id", 1)],
+        unique=True,
+        partialFilterExpression={"stripe_checkout_session_id": {"$type": "string"}},
+    )
     await db.payouts.create_index([("seller_id", 1), ("status", 1)])
     await db.payout_attempts.create_index([("payout_id", 1), ("attempt_number", 1)], unique=True)
+    commission_indexes = await db.commission_settings.index_information()
+    for index_name, index_spec in commission_indexes.items():
+        index_keys = dict(index_spec.get("key", []))
+        if (
+            index_name != "_id_"
+            and index_spec.get("unique")
+            and {"scope", "targetId"}.issubset(index_keys)
+        ):
+            # Obsolete schema: missing fields were indexed as (null, null),
+            # preventing the append-only commission history used now.
+            await db.commission_settings.drop_index(index_name)
     await db.commission_settings.create_index("effective_from")
     await db.audit_logs.create_index([("entity_type", 1), ("entity_id", 1)])
     await db.delivery_staff.create_index("user_id", unique=True)

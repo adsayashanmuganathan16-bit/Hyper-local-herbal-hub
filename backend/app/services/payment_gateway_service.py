@@ -20,4 +20,7 @@ def get_payment_gateway(provider: str) -> PaymentGateway:
     if provider.lower() == "mock":
         from app.services.mock_payment_service import mock_payment_gateway
         return mock_payment_gateway
+    if provider.lower() == "stripe":
+        from app.services.stripe_service import stripe_gateway
+        return stripe_gateway
     raise RuntimeError(f"Unsupported payment provider: {provider}")

@@ -1,9 +1,11 @@
-.navbar {
+  .navbar {
     position: fixed;
-    top: 0;
-    left: 0;
+    top: -1px;
     right: 0;
-    height: 80px;
+    left: 0;
+    margin: 0;
+    border-top: 0;
+    height: 81px;
     background: rgba(255,255,255,0.95);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--gray-200);
@@ -15,6 +17,7 @@
     align-items: center;
     height: 100%;
     gap: 32px;
+    min-width: 0;
   }
   .navbar-logo {
     display: flex;
@@ -28,7 +31,8 @@
   .navbar-links {
     display: flex;
     gap: 8px;
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
   }
   .navbar-link {
     padding: 8px 18px;
@@ -42,9 +46,11 @@
   .navbar-link.active { color: var(--green-800); background: var(--green-100); }
   .navbar-right {
     display: flex;
+    flex: 0 1 auto;
     align-items: center;
     gap: 8px;
-    flex-shrink: 0;
+    min-width: 0;
+    max-width: 100%;
   }
   .navbar-icon-wrap { position: relative; }
   .navbar-icon-btn {
@@ -77,17 +83,19 @@
   }
   .cart-btn { text-decoration: none; }
   .navbar-avatar {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     border-radius: var(--radius-full);
     overflow: hidden;
-    border: 2px solid var(--green-300);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
     display: flex;
     align-items: center;
     justify-content: center;
     transition: var(--transition);
   }
-  .navbar-avatar:hover { border-color: var(--green-600); }
+  .navbar-avatar:hover { border-color: var(--brand-400); box-shadow:var(--shadow-card); }
   .avatar-img { width: 100%; height: 100%; object-fit: cover; }
   .avatar-initial {
     font-weight: 700;
@@ -230,13 +238,18 @@
     background: rgba(139,195,74,.15);
   }
   .navbar-home .searchbar-compact {
-    width: 265px;
+    width: 100%;
+    max-width: 320px;
+    height: 42px;
     color: rgba(255,255,255,.62);
     background: rgba(255,255,255,.1);
     border-color: rgba(255,255,255,.1);
+    box-shadow: none;
   }
   .navbar-home .searchbar-compact input {
-    width: 220px;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
     color: white;
     font-size: 12px;
   }
@@ -262,7 +275,10 @@
   }
   .navbar-home .navbar-mobile-toggle,
   .navbar-home .navbar-icon-btn { color: white; }
-  .navbar-home .navbar-avatar { border-color: rgba(255,255,255,.65); }
+  .navbar-home .navbar-avatar {
+    border-color: rgba(255,255,255,.36);
+    box-shadow: 0 3px 12px rgba(0,0,0,.18);
+  }
 
   @media (max-width: 1060px) {
     .navbar-home .searchbar-compact { display: none; }

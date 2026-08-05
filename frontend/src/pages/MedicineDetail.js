@@ -11,8 +11,8 @@ import MedicineCard from '../components/MedicineCard';
 import Loading from '../components/Loading';
 import { toast } from 'react-toastify';
 import DeliveryMap from '../components/DeliveryMap';
-
-const PLACEHOLDER_IMG = 'https://picsum.photos/seed/herb-detail/600/600.jpg';
+import { isWishlisted, toggleWishlist } from '../utils/wishlist';
+import { PRODUCT_IMAGE_PLACEHOLDER, productImageUrl, useProductImageFallback } from '../utils/productImage';
 
 export default function MedicineDetail() {
   const { id } = useParams();
@@ -24,12 +24,14 @@ export default function MedicineDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedImg, setSelectedImg] = useState(0);
   const [qty, setQty] = useState(1);
+  const [wished, setWished] = useState(() => isWishlisted(id));
 
   useEffect(() => {
     async function fetch() {
       try {
         const { data: med } = await medicineApi.getById(id);
         setMedicine(med);
+        setWished(isWishlisted(id));
         setSelectedImg(0);
 
         const { data: revData } = await reviewApi.getByMedicine(id, { page: 1 });
@@ -59,7 +61,9 @@ export default function MedicineDetail() {
   if (loading) return <Loading />;
   if (!medicine) return <div className="empty-state"><h3>Product Not Found</h3></div>;
 
-  const images = medicine.images?.length > 0 ? medicine.images : [PLACEHOLDER_IMG];
+  const images = medicine.images?.length > 0
+    ? medicine.images.map(productImageUrl)
+    : [productImageUrl(medicine) || PRODUCT_IMAGE_PLACEHOLDER];
   const hasDiscount = medicine.discount_price && medicine.discount_price < medicine.price;
   const discountPercent = getDiscountPercent(medicine.price, medicine.discount_price);
   const outOfStock = medicine.stock <= 0;
@@ -81,14 +85,14 @@ export default function MedicineDetail() {
             {/* Images */}
             <div className="detail-images">
               <div className="detail-main-img">
-                <img src={images[selectedImg]} alt={medicine.name} />
+                <img src={images[selectedImg]} alt={medicine.name} onError={useProductImageFallback} />
                 {hasDiscount && <span className="detail-discount-badge">-{discountPercent}% OFF</span>}
               </div>
               {images.length > 1 && (
                 <div className="detail-thumbs">
                   {images.map((img, i) => (
                     <button key={i} className={`detail-thumb ${i === selectedImg ? 'active' : ''}`} onClick={() => setSelectedImg(i)}>
-                      <img src={img} alt="" />
+                      <img src={img} alt="" onError={useProductImageFallback} />
                     </button>
                   ))}
                 </div>
@@ -175,6 +179,7 @@ export default function MedicineDetail() {
                 <button className="btn btn-primary btn-lg" onClick={handleAddToCart} disabled={outOfStock || adding}>
                   <FiShoppingCart size={18} /> {outOfStock ? 'Out of Stock' : adding ? 'Adding…' : 'Add to Cart'}
                 </button>
+                <button className={`detail-wishlist ${wished ? 'active' : ''}`} onClick={() => { const next=toggleWishlist(id); setWished(next); toast.success(next?'Saved to wishlist':'Removed from wishlist'); }} aria-label="Toggle wishlist"><FiHeart /> {wished ? 'Saved' : 'Wishlist'}</button>
               </div>
             </div>
           </div>

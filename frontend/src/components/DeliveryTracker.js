@@ -5,6 +5,7 @@ import {
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import LiveMap from './LiveMap';
+import { formatDateTime } from '../utils/helpers';
 
 // How long (seconds) a live "out for delivery" run takes in this demo.
 const RUN_SECONDS = 75;
@@ -250,7 +251,7 @@ export default function DeliveryTracker({ delivery, status }) {
                     </div>
                     <span className="dt-feed-text">{f.text}</span>
                     <span className="dt-feed-time">
-                      {f.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatDateTime(f.time)}
                     </span>
                   </div>
                 </div>

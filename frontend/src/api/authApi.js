@@ -16,9 +16,8 @@ export const authApi = {
     api.post('/api/auth/refresh', { refresh_token }),
   uploadProfileImage: (file) => {
     const formData = new FormData();
-    formData.append('file', file);
-    return api.post('/api/auth/upload-profile-image', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    formData.append('image', file);
+    // Let Axios/browser set Content-Type so the multipart boundary is included.
+    return api.post('/api/auth/upload-profile-image', formData);
   },
 };

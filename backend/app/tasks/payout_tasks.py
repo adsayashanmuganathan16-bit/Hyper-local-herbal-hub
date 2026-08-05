@@ -18,7 +18,8 @@ async def _process(payout_id: str) -> str:
     try:
         payout = await db.payouts.find_one_and_update(
             {"_id": ObjectId(payout_id), "status": "PENDING", "retry_count": {"$lt": 3}},
-            {"$set": {"status": "PROCESSING", "updated_at": now}},
+            {"$set": {"status": "PROCESSING", "payout_status": "PROCESSING",
+                      "updated_at": now}},
             return_document=ReturnDocument.AFTER,
         )
         if not payout:
@@ -36,7 +37,8 @@ async def _process(payout_id: str) -> str:
         should_retry = provider_status == "FAILED" and attempt < 3
         status = "PENDING" if should_retry else provider_status
         await db.payouts.update_one({"_id": payout["_id"]}, {"$set": {
-            "status": status, "failure_reason": error, "transaction_reference": result.reference if result else None,
+            "status": status, "payout_status": status, "failure_reason": error,
+            "transaction_reference": result.reference if result else None,
             "retry_count": attempt, "updated_at": utc_now(),
         }})
         await db.payout_attempts.update_one({"payout_id": payout_id, "attempt_number": attempt},

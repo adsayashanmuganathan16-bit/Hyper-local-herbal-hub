@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
 from app.database import get_db
 from app.middleware.auth_middleware import require_customer
-from app.utils.helpers import calculate_cart_totals, serialize_doc
+from app.utils.helpers import calculate_cart_totals, get_product_image, serialize_doc
 from bson import ObjectId
 from bson.errors import InvalidId
 
@@ -25,6 +25,10 @@ async def get_cart(current_user: dict = Depends(require_customer)):
             weight_grams = int(medicine.get("weight_grams", 100))
             if item.get("weight_grams") != weight_grams:
                 item["weight_grams"] = weight_grams
+                cart_changed = True
+            current_image = get_product_image(medicine)
+            if item.get("image") != current_image:
+                item["image"] = current_image
                 cart_changed = True
             item["seller_id"] = str(medicine.get("seller_id"))
             item["seller_name"] = (seller or {}).get("store_name", (seller or {}).get("business_name", medicine.get("seller_name", "Seller")))
@@ -61,7 +65,7 @@ async def add_to_cart(
         "medicine_id": str(medicine["_id"]), "name": medicine["name"],
         "price": medicine["price"], "discount_price": medicine.get("discount_price"),
         "quantity": quantity,
-        "image": medicine.get("images", [None])[0] if medicine.get("images") else None,
+        "image": get_product_image(medicine),
         "requires_prescription": medicine.get("requires_prescription", False),
         "weight_grams": int(medicine.get("weight_grams", 100)),
         "seller_id": str(medicine.get("seller_id")),

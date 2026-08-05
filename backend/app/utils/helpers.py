@@ -52,6 +52,23 @@ def calculate_order_amounts(items: list, delivery_charge: float = 0, discount: f
     }
 
 
+def get_product_image(product: dict) -> str | None:
+    """Return the first image across current and legacy product fields."""
+    return next(
+        (
+            value
+            for value in (
+                *((product.get("images") or [])),
+                product.get("image"),
+                product.get("image_url"),
+                product.get("imageUrl"),
+            )
+            if value
+        ),
+        None,
+    )
+
+
 def serialize_doc(doc: dict) -> dict:
     """Convert MongoDB document to JSON-serializable dict."""
     if not doc:
@@ -70,12 +87,31 @@ def serialize_doc(doc: dict) -> dict:
             serialized["id"] = str(value)
         elif isinstance(value, datetime):
             serialized[key] = value.isoformat()
+        elif key == "images" and isinstance(value, list):
+            from app.services.s3_service import s3_service
+            serialized[key] = [
+                s3_service.display_url(item) for item in value if item
+            ]
+        elif key in {"image", "image_url", "imageUrl", "medicine_image"} and isinstance(value, str):
+            from app.services.s3_service import s3_service
+            serialized[key] = s3_service.display_url(value)
         elif isinstance(value, list):
             serialized[key] = [serialize_doc(item) if isinstance(item, dict) else item for item in value]
         elif isinstance(value, dict):
             serialized[key] = serialize_doc(value)
         else:
             serialized[key] = value
+    return serialized
+
+
+def serialize_medicine(doc: dict) -> dict:
+    """Serialize a medicine and normalize legacy product image fields."""
+    serialized = serialize_doc(doc)
+    if not serialized:
+        return serialized
+    if not serialized.get("images"):
+        legacy_image = get_product_image(serialized)
+        serialized["images"] = [legacy_image] if legacy_image else []
     return serialized
 
 

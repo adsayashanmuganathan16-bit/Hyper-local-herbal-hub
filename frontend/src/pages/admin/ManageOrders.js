@@ -4,6 +4,8 @@ import { formatCurrency, formatDateTime, formatStatus, getStatusColor } from '..
 import { toast } from 'react-toastify';
 import Loading from '../../components/Loading';
 import PostalShippingControls from '../../components/PostalShippingControls';
+import { Calendar, CreditCard, Package, Truck, UserRound } from 'lucide-react';
+import { productImageUrl, useProductImageFallback } from '../../utils/productImage';
 
 const STATUSES = ['placed', 'preparing', 'ready_for_pickup', 'delivery_assigned', 'pickup_accepted', 'picked_up', 'on_the_way', 'delivered', 'cancelled', 'returned'];
 
@@ -34,55 +36,22 @@ export default function ManageOrders() {
             ))}
           </div>
           {loading ? <Loading /> : (
-                        <div className="admin-card" style={{ padding: 0, overflow: 'hidden' }}>
-                        <div style={{ overflowX: 'auto' }}>
-                          <table className="data-table">
-                            <thead>
-                              <tr>
-                                <th>Order ID</th>
-                                <th>Items</th>
-                                <th>Amount</th>
-                                <th>Payment</th>
-                                <th>Status</th>
-                                <th>Customer Answer</th>
-                                <th>Date</th>
-                                <th>Postal Shipping</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {orders.length === 0 ? (
-                                <tr><td colSpan={8} className="text-center text-gray" style={{ padding: 40 }}>No orders found</td></tr>
-                              ) : orders.map((order) => (
-                                <tr key={order.id}>
-                                  <td>
-                                    <span className="font-semibold text-green">#{order.id?.slice(0, 8).toUpperCase()}</span>
-                                    <br /><span className="text-xs text-gray">{order.items?.length} item(s)</span>
-                                  </td>
-                                  <td className="text-sm">
-                                    {order.items?.slice(0, 2).map((item, i) => (
-                                      <span key={i}>{item.name} ×{item.quantity}{i < Math.min(2, order.items.length) - 1 ? ', ' : ''}</span>
-                                    ))}
-                                    {order.items?.length > 2 && <span className="text-gray"> +{order.items.length - 2}</span>}
-                                  </td>
-                                  <td className="font-semibold">{formatCurrency(order.final_amount)}</td>
-                                  <td>
-                                    <span className={`badge ${getStatusColor(order.payment_status)}`}>
-                                      {formatStatus(order.payment_status)}
-                                    </span>
-                                    <br /><span className="text-xs text-gray">{order.payment_method?.replace(/_/g, ' ').toUpperCase()}</span>
-                                  </td>
-                                  <td><span className={`badge ${getStatusColor(order.delivery_status || order.status)}`}>{formatStatus(order.delivery_status || order.status)}</span></td>
-                                  <td>{order.customer_confirmed_received ? <span className="badge badge-green">Parcel Received</span> : order.customer_reported_not_received ? <span className="badge badge-red">Not Arrived</span> : <span className="text-xs text-gray">Waiting</span>}</td>
-                                  <td className="text-sm text-gray">{formatDateTime(order.created_at)}</td>
-                                  <td>
-                                    <PostalShippingControls order={order} onUpdated={loadOrders} />
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
+            orders.length === 0 ? <div className="empty-state"><Package/><h3>No orders found</h3><p>Orders matching this status will appear here.</p></div> :
+            <div className="admin-order-card-grid">
+              {orders.map((order) => <article className="admin-order-card" key={order.id}>
+                <header><div><span>ORDER</span><strong>#{order.id?.slice(0,8).toUpperCase()}</strong></div><time><Calendar/> {formatDateTime(order.created_at)}</time></header>
+                <div className="admin-order-card-content">
+                  <div className="admin-order-item"><img src={productImageUrl(order.items?.[0])} alt="" onError={useProductImageFallback}/><div><h3>{order.items?.[0]?.name || 'Marketplace order'}</h3><p>{order.items?.length || 0} item(s) · {order.items?.reduce((sum,item)=>sum+item.quantity,0) || 0} units</p><b>{formatCurrency(order.final_amount)}</b></div></div>
+                  <div className="admin-order-meta">
+                    <span><CreditCard/><small>Payment</small><b>{formatStatus(order.payment_method)} · {formatStatus(order.payment_status)}</b></span>
+                    <span><Truck/><small>Delivery</small><b>{formatStatus(order.delivery_status || order.status)}</b></span>
+                    <span><UserRound/><small>Customer response</small><b>{order.customer_confirmed_received?'Received':order.customer_reported_not_received?'Not arrived':'Waiting'}</b></span>
+                  </div>
+                  <div className="admin-order-badges"><span className={`badge ${getStatusColor(order.payment_status)}`}>{formatStatus(order.payment_status)}</span><span className={`badge ${getStatusColor(order.delivery_status||order.status)}`}>{formatStatus(order.delivery_status||order.status)}</span></div>
+                  <PostalShippingControls order={order} onUpdated={loadOrders}/>
+                </div>
+              </article>)}
+            </div>
                     )}
                   </div>
                 </section>

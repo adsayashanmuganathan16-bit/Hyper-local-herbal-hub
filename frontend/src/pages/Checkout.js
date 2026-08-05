@@ -99,7 +99,9 @@ export default function Checkout() {
       const { data } = await orderApi.createOrder(orderData);
 
       if (data.payment_request) {
-        toast.info('Redirecting to Demo Payment Gateway…');
+        toast.info(data.payment_request.provider === 'stripe'
+          ? 'Redirecting to secure Stripe Checkout…'
+          : 'Redirecting to the payment gateway…');
         window.location.assign(data.payment_request.checkout_url);
       } else {
         toast.success('Order placed successfully!');
@@ -117,6 +119,13 @@ export default function Checkout() {
     <div className="page-wrapper">
       <section className="section" style={{ paddingTop: '40px' }}>
         <div className="container">
+          <nav className="checkout-progress" aria-label="Checkout progress">
+            <span className="complete"><b>1</b><small>Cart</small></span>
+            <i />
+            <span className="active"><b>2</b><small>Delivery &amp; payment</small></span>
+            <i />
+            <span><b>3</b><small>Confirmation</small></span>
+          </nav>
           <h1 className="section-title mb-6">Checkout</h1>
 
           <form onSubmit={handleSubmit}>
@@ -180,7 +189,7 @@ export default function Checkout() {
                   <div className="payment-options">
                     {[
                       { value: 'cod', label: 'Cash on Delivery', desc: 'Pay when your order arrives' },
-                      { value: 'mock', label: 'Demo Card Payment', desc: 'Development gateway — no real money is charged' },
+                      { value: 'stripe', label: 'Card Payment', desc: 'Secure payment powered by Stripe' },
                     ].map((opt) => (
                       <label key={opt.value} className={`payment-option ${form.payment_method === opt.value ? 'selected' : ''}`}>
                         <input type="radio" name="payment_method" value={opt.value} checked={form.payment_method === opt.value} onChange={handleChange} />
@@ -191,7 +200,7 @@ export default function Checkout() {
                       </label>
                     ))}
                   </div>
-                  <p className="text-gray text-xs mt-2">{form.payment_method === 'cod' ? 'Payment remains pending until the courier delivers the order and collects cash.' : 'You will continue to the Demo Payment Gateway. No real money will be charged.'}</p>
+                  <p className="text-gray text-xs mt-2">{form.payment_method === 'cod' ? 'Payment remains pending until the courier delivers the order and collects cash.' : 'You will continue to Stripe Checkout to pay securely.'}</p>
                 </div>
               </div>
 
