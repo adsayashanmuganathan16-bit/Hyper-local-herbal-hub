@@ -29,6 +29,7 @@ class PaymentStatusEnum(str, Enum):
 
 
 class PaymentMethodEnum(str, Enum):
+    STRIPE = "stripe"
     PAYHERE = "payhere"
     ONEPAY = "onepay"
     MOCK = "mock"

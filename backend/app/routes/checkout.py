@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from app.database import get_db
 from app.models.order import OrderCreate, OrderStatusEnum, PaymentStatusEnum
 from app.middleware.auth_middleware import require_customer
-from app.utils.helpers import calculate_order_amounts, serialize_doc
+from app.utils.helpers import calculate_order_amounts, get_product_image, serialize_doc
 from app.services.payment_service import payment_service
 from app.services.email_service import email_service
 from app.config import settings
@@ -48,7 +48,7 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
         item = {"medicine_id": str(medicine["_id"]), "name": medicine["name"],
                 "price": unit_price, "quantity": requested.quantity,
                 "weight_grams": int(medicine.get("weight_grams", 100)),
-                "image": medicine.get("images", [None])[0] if medicine.get("images") else None,
+                "image": get_product_image(medicine),
                 "requires_prescription": medicine.get("requires_prescription", False)}
         validated_items.append(item)
         seller_key = str(seller_id)
@@ -81,7 +81,7 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
         selected_profiles[seller_id] = profiles[seller_id]
         unit_price = medicine.get("discount_price") or medicine["price"]
         validated_items.append({"medicine_id": str(medicine["_id"]), "name": name, "price": unit_price,
-            "quantity": requested["quantity"], "image": medicine.get("images", [None])[0] if medicine.get("images") else None,
+            "quantity": requested["quantity"], "image": get_product_image(medicine),
             "weight_grams": int(medicine.get("weight_grams", 100)),
             "requires_prescription": medicine.get("requires_prescription", False)})
         seller_amounts[seller_id] = seller_amounts.get(seller_id, 0) + unit_price * requested["quantity"]
@@ -175,7 +175,14 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
             from app.services.financial_order_service import create_financial_order
             from app.services.payment_gateway_service import get_payment_gateway
 
-            await create_financial_order(db, str(result.inserted_id), current_user["_id"], amounts["final_amount"], seller_amounts)
+            delivery_allocations = (
+                {selected_seller["user_id"]: amounts["delivery_charge"]}
+                if amounts["delivery_charge"] > 0 else {}
+            )
+            await create_financial_order(
+                db, str(result.inserted_id), current_user["_id"],
+                amounts["final_amount"], seller_amounts, delivery_allocations,
+            )
             name_parts = order_data.address.get("name", current_user.get("name", "Customer")).split(maxsplit=1)
             payment_gateway = get_payment_gateway(settings.PAYMENT_PROVIDER)
             payment_request = payment_gateway.create_payment_request(str(result.inserted_id), amounts["final_amount"], {
@@ -201,7 +208,14 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
     else:
         try:
             from app.services.financial_order_service import create_financial_order
-            await create_financial_order(db, str(result.inserted_id), current_user["_id"], amounts["final_amount"], seller_amounts)
+            delivery_allocations = (
+                {selected_seller["user_id"]: amounts["delivery_charge"]}
+                if amounts["delivery_charge"] > 0 else {}
+            )
+            await create_financial_order(
+                db, str(result.inserted_id), current_user["_id"],
+                amounts["final_amount"], seller_amounts, delivery_allocations,
+            )
             await db.payments.update_one(
                 {"order_id": str(result.inserted_id)},
                 {"$set": {"payment_gateway": "cod", "status": "PENDING", "updated_at": utc_now()}},

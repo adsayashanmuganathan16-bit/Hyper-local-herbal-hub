@@ -202,3 +202,35 @@
     .tracking-location-summary { grid-template-columns: 1fr; }
     .tracking-map-footer { align-items: flex-start; flex-direction: column; }
   }
+.payment-return {
+  align-items: center;
+  border: 1px solid;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding: 16px 18px;
+}
+
+.payment-return p {
+  margin: 4px 0 0;
+}
+
+.payment-return.success {
+  background: #ecfdf3;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.payment-return.pending {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
+.payment-return.failed,
+.payment-return.cancelled {
+  background: #fff1f2;
+  border-color: #fda4af;
+  color: #9f1239;
+}

@@ -363,7 +363,7 @@ const routes = [
   }],
   ['POST', '/api/auth/upload-profile-image', ({ body }) => {
     const user = requireAuth();
-    const { url } = fileToUrl(body);
+    const { url } = fileToUrl(body, 'image');
     const image = url || `https://i.pravatar.cc/150?u=${user.id}`;
     const users = db.getUsers();
     const idx = users.findIndex((u) => u.id === user.id);
@@ -434,14 +434,18 @@ const routes = [
     db.setMedicines(meds);
     return { success: true };
   }],
-  ['POST', '/api/medicines/:id/images', ({ params, body }) => {
+  ['POST', '/api/medicines/:id/images', ({ params, body, query }) => {
     const user = requireAuth();
     const meds = db.getMedicines();
     const idx = meds.findIndex((m) => m.id === params.id);
     if (idx === -1) throw new ApiError(404, 'Medicine not found');
     if (user.role !== 'admin' && meds[idx].seller_id !== user.id) throw new ApiError(403, 'You can only edit your products');
     const { url } = fileToUrl(body, 'files');
-    if (url) meds[idx].images = [url, ...(meds[idx].images || [])];
+    if (url) {
+      meds[idx].images = query.replace === 'true'
+        ? [url]
+        : [url, ...(meds[idx].images || [])];
+    }
     db.setMedicines(meds);
     return meds[idx];
   }],

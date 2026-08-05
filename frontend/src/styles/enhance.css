@@ -514,7 +514,8 @@
 /* Keep navbar actions visible at every supported screen width. */
 .navbar-right {
   margin-left: auto;
-  min-width: max-content;
+  min-width: 0;
+  max-width: 100%;
 }
 .navbar-icon-wrap,
 .navbar .cart-btn {

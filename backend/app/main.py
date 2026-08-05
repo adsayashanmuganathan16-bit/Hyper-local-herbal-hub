@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database import connect_db, disconnect_db
-from app.routes import auth, medicines, cart, checkout, orders, prescriptions, delivery, delivery_staff, admin, notifications, reviews, analytics, seller, financial_admin, financial_payments, financial_sellers, service_areas, newsletter, plants, support
+from app.routes import auth, medicines, cart, wishlist, checkout, orders, prescriptions, delivery, delivery_staff, admin, notifications, reviews, analytics, seller, financial_admin, financial_payments, financial_sellers, service_areas, newsletter, plants, support
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -43,6 +43,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(medicines.router)
 app.include_router(cart.router)
+app.include_router(wishlist.router)
 app.include_router(checkout.router)
 app.include_router(orders.router)
 app.include_router(prescriptions.router)

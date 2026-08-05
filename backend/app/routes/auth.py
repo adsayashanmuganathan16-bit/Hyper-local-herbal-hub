@@ -59,6 +59,16 @@ router = APIRouter(
 PUBLIC_REGISTRATION_ROLES = {"customer", "seller"}
 
 
+def serialize_user(user: dict) -> dict:
+    """Serialize a user and make a private S3 profile image browser-readable."""
+    serialized = serialize_doc(user)
+    if serialized and serialized.get("profile_image"):
+        serialized["profile_image"] = s3_service.display_url(
+            serialized["profile_image"]
+        )
+    return serialized
+
+
 # =========================
 # REGISTER
 # =========================
@@ -310,7 +320,7 @@ async def get_profile(
         seller = await get_db().sellers.find_one({"user_id": current_user["_id"]})
         current_user["store_name"] = current_user.get("store_name") or (seller or {}).get("store_name") or (seller or {}).get("business_name")
         current_user["business_name"] = current_user.get("business_name") or (seller or {}).get("business_name")
-    return {"user": current_user}
+    return {"user": serialize_user(current_user)}
 
 
 
@@ -382,7 +392,7 @@ async def update_profile(
 
         "message": "Profile updated",
 
-        "user": serialize_doc(
+        "user": serialize_user(
             updated_user
         )
 
@@ -437,9 +447,11 @@ async def upload_profile_image(
         updated_user = await db.users.find_one({"_id": user_id})
         if not updated_user:
             raise HTTPException(status_code=404, detail="User not found.")
+        display_image_url = s3_service.display_url(image_url)
         return {
             "message": "Profile image updated",
-            "user": serialize_doc(updated_user),
+            "image_url": display_image_url,
+            "user": serialize_user(updated_user),
         }
     except HTTPException:
         raise

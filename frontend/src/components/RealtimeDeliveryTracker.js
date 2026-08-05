@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiClock, FiMapPin, FiNavigation, FiTruck } from 'react-icons/fi';
 import { deliveryApi } from '../api/deliveryApi';
 import LiveMap from './LiveMap';
+import { formatDateTime } from '../utils/helpers';
 
 const KEY = process.env.REACT_APP_GEOAPIFY_API_KEY;
 const POLL_INTERVAL_MS = 7000;
@@ -207,7 +208,7 @@ export default function RealtimeDeliveryTracker({ orderId }) {
 
       {courier?.updatedAt && (
         <p className="tracking-last-update">
-          Courier GPS refreshed {new Date(courier.updatedAt).toLocaleTimeString()}
+          Courier GPS refreshed {formatDateTime(courier.updatedAt)}
           {' '}· automatically updates every 7 seconds
         </p>
       )}

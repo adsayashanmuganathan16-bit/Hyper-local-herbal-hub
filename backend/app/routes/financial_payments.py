@@ -16,6 +16,7 @@ from app.services.financial_order_service import create_financial_order
 from app.services.payhere_service import payhere_gateway
 from app.services.onepay_service import OnePayError, onepay_gateway
 from app.services.mock_payment_service import mock_payment_gateway
+from app.services.stripe_service import stripe_gateway
 from app.services.payment_gateway_service import get_payment_gateway
 from app.config import settings
 
@@ -76,15 +77,39 @@ async def _record_verified_payment(db, event, payload: dict, request: Request, s
         if payment.get("transaction_id") != event.transaction_id:
             raise HTTPException(409, "Order already paid by another transaction")
         return {"status": "already_processed"}
+    event_id = getattr(event, "event_id", None)
+    if event_id and payment.get("stripe_event_id") == event_id:
+        return {"status": "already_processed"}
 
     now = datetime.now(timezone.utc)
-    payload_hash = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+    payload_hash = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()
+    ).hexdigest()
+    update_fields = {
+        "transaction_id": event.transaction_id,
+        "status": status,
+        "payment_status": status,
+        "amount": f"{event.amount:.2f}",
+        "webhook_payload_hash": payload_hash,
+        "paid_at": now if status == "PAID" else None,
+        "payment_timestamp": now if status == "PAID" else None,
+        "updated_at": now,
+    }
+    if getattr(event, "payment_intent_id", None):
+        update_fields["stripe_payment_intent_id"] = event.payment_intent_id
+    if event_id:
+        update_fields["stripe_event_id"] = event_id
+    claim_filter = {"order_id": event.order_id, "status": {"$ne": "PAID"}}
+    if event_id:
+        # This condition makes claiming a Stripe event atomic. A retry of a
+        # failed/cancelled event cannot create another audit entry or repeat
+        # downstream work, while a later event for the same Session can still
+        # move the payment to its next valid state.
+        claim_filter["stripe_event_id"] = {"$ne": event_id}
     try:
         claimed = await db.payments.find_one_and_update(
-            {"order_id": event.order_id, "status": {"$ne": "PAID"}},
-            {"$set": {"transaction_id": event.transaction_id, "status": status,
-                      "webhook_payload_hash": payload_hash, "paid_at": now if status == "PAID" else None,
-                      "updated_at": now}}, return_document=ReturnDocument.AFTER,
+            claim_filter,
+            {"$set": update_fields}, return_document=ReturnDocument.AFTER,
         )
     except Exception as exc:
         if await db.payments.find_one({"transaction_id": event.transaction_id, "order_id": {"$ne": event.order_id}}):
@@ -104,7 +129,12 @@ async def _record_verified_payment(db, event, payload: dict, request: Request, s
         return {"status": status}
 
     from app.services.financial_order_service import create_payouts_for_paid_order
-    allocations = await create_payouts_for_paid_order(db, event.order_id, now)
+    allocations = await create_payouts_for_paid_order(
+        db,
+        event.order_id,
+        now,
+        payment_reference=event.transaction_id,
+    )
     from app.utils.helpers import generate_otp
     await db.deliveries.update_one(
         {"order_id": event.order_id},
@@ -117,16 +147,39 @@ async def _record_verified_payment(db, event, payload: dict, request: Request, s
         upsert=True,
     )
     from app.services.financial_notification_service import create_financial_notification, mark_marketplace_order_paid
+    from app.services.notification_realtime import notify_admins
     await mark_marketplace_order_paid(event.order_id, event.transaction_id)
     from app.services.seller_fulfillment_service import activate_seller_fulfillments
     await activate_seller_fulfillments(db, event.order_id)
     await create_financial_notification(order["customer_id"], "Payment received",
                                         f"Payment for order #{event.order_id[:8]} was verified.", f"/orders/{event.order_id}")
-    for seller_user_id in {allocation["seller_user_id"] for allocation in allocations}:
+    total_commission = sum(
+        (money(allocation.get("commission_amount", "0")) for allocation in allocations),
+        Decimal("0"),
+    )
+    await notify_admins(
+        db,
+        "Marketplace commission received",
+        f"LKR {total_commission:,.2f} commission from paid order "
+        f"#{event.order_id[:8]} was credited to the platform account.",
+        "/admin/payouts",
+    )
+    for allocation in allocations:
+        seller_user_id = allocation["seller_user_id"]
+        delivery_amount = money(allocation.get("delivery_amount", "0"))
+        net_amount = money(allocation.get("net_amount", "0"))
         await create_financial_notification(seller_user_id, "New paid customer order",
                                             f"Order #{event.order_id[:8]} is paid and ready for preparation.", "/seller/orders")
-        await create_financial_notification(seller_user_id, "Payout created",
-                                            f"A payout was created for paid order #{event.order_id[:8]}.")
+        delivery_text = (
+            f", including LKR {delivery_amount:,.2f} courier fee"
+            if delivery_amount > 0 else ""
+        )
+        await create_financial_notification(
+            seller_user_id,
+            "Seller balance credited",
+            f"LKR {net_amount:,.2f}{delivery_text} was credited for paid order "
+            f"#{event.order_id[:8]}. Bank transfer status is available in Earnings.",
+        )
     return {"status": "PAID"}
 
 
@@ -155,6 +208,86 @@ async def onepay_webhook(request: Request, _=Depends(payment_webhook_limit)):
     if not payment or payment["order_id"] != event.order_id:
         raise HTTPException(404, "OnePay transaction was not found")
     status = "PAID" if event.status_code == "1" else "FAILED"
+    return await _record_verified_payment(db, event, payload, request, status)
+
+
+@router.post("/api/webhooks/stripe")
+async def stripe_webhook(request: Request, _=Depends(payment_webhook_limit)):
+    import stripe
+
+    raw_payload = await request.body()
+    signature = request.headers.get("stripe-signature")
+    if not signature:
+        raise HTTPException(400, "Missing Stripe signature")
+    try:
+        stripe_event = stripe.Webhook.construct_event(
+            raw_payload,
+            signature,
+            settings.STRIPE_WEBHOOK_SECRET,
+        )
+        payload = stripe_event.to_dict_recursive()
+        event = stripe_gateway.verify_webhook(payload)
+    except (ValueError, stripe.error.SignatureVerificationError) as exc:
+        raise HTTPException(400, "Invalid Stripe webhook") from exc
+
+    status = {
+        "1": "PAID",
+        "FAILED": "FAILED",
+        "CANCELLED": "CANCELLED",
+        "PENDING": "PENDING",
+    }.get(event.status_code, "FAILED")
+    return await _record_verified_payment(get_db(), event, payload, request, status)
+
+
+@router.post("/api/payments/stripe/{order_id}/confirm")
+async def confirm_stripe_checkout(
+    order_id: str,
+    body: dict,
+    request: Request,
+    user=Depends(get_current_user),
+    _=Depends(payment_request_limit),
+):
+    """Recover Stripe confirmation when the webhook has not arrived yet."""
+    if settings.PAYMENT_PROVIDER != "stripe":
+        raise HTTPException(404, "Stripe payments are disabled")
+    session_id = str(body.get("session_id") or "")
+    if not session_id:
+        raise HTTPException(422, "Stripe Checkout Session is required")
+
+    db = get_db()
+    order = await db.financial_orders.find_one({
+        "order_id": order_id,
+        "customer_id": user["_id"],
+    })
+    payment = await db.payments.find_one({"order_id": order_id})
+    if not order or not payment:
+        raise HTTPException(404, "Order not found")
+    if payment.get("transaction_id") != session_id:
+        raise HTTPException(409, "Stripe Checkout Session does not belong to this order")
+    if payment.get("status") == "PAID":
+        return {"status": "PAID"}
+
+    try:
+        event = stripe_gateway.retrieve_checkout_session(session_id)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(503, "Unable to confirm payment with Stripe") from exc
+    if event.order_id != order_id or event.transaction_id != session_id:
+        raise HTTPException(409, "Stripe Checkout Session does not belong to this order")
+
+    status = {
+        "1": "PAID",
+        "FAILED": "FAILED",
+        "CANCELLED": "CANCELLED",
+        "PENDING": "PENDING",
+    }.get(event.status_code, "FAILED")
+    payload = {
+        "source": "checkout_return_recovery",
+        "order_id": order_id,
+        "session_id": session_id,
+        "stripe_status": status,
+    }
     return await _record_verified_payment(db, event, payload, request, status)
 
 

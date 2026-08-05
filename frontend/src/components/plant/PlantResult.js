@@ -1,5 +1,7 @@
 import React from 'react';
 import ErrorMessage from './ErrorMessage';
+import { Link } from 'react-router-dom';
+import { MapPin, ShoppingBag } from 'lucide-react';
 
 const LOW_CONFIDENCE_MESSAGE = {
   english: 'Unable to identify this plant accurately. Please upload a clearer image.',
@@ -96,6 +98,11 @@ export default function PlantResult({ result, imageUrl }) {
         tamil={result.precautions_tamil}
         tone="plant-precautions-field"
       />
+      <section className="plant-nearby-marketplace">
+        <span><MapPin /></span>
+        <div><h3>Find this plant nearby</h3><p>Explore products and trusted local sellers related to this identification.</p></div>
+        <Link className="btn btn-primary btn-sm" to={`/shop?q=${encodeURIComponent(result.common_name || result.scientific_name || '')}`}><ShoppingBag /> Browse marketplace</Link>
+      </section>
     </div>
   );
 }

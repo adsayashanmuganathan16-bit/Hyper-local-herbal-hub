@@ -1,42 +1,45 @@
-.checkout-layout { display: grid; grid-template-columns: 1fr 400px; gap: 32px; align-items: start; }
+.checkout-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(340px,400px); gap: var(--space-4); align-items: start; }
 .checkout-section {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  padding: 28px;
-  margin-bottom: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  box-shadow:var(--shadow-card);
 }
 .checkout-section-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-1);
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 700;
-  color: var(--green-900);
-  margin-bottom: 20px;
+  color: var(--brand-950);
+  margin-bottom: var(--space-2);
 }
-.payment-options { display: flex; flex-direction: column; gap: 10px; }
+.payment-options { display: flex; flex-direction: column; gap: var(--space-1); }
 .payment-option {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 16px;
-  border: 2px solid var(--gray-200);
-  border-radius: var(--radius-md);
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
   cursor: pointer;
   transition: var(--transition);
 }
-.payment-option:hover { border-color: var(--green-400); }
-.payment-option.selected { border-color: var(--green-600); background: var(--green-50); }
+.payment-option:hover { border-color: var(--brand-400); }
+.payment-option.selected { border-color: var(--brand-600); background: var(--brand-50); }
 .payment-option input { margin-top: 3px; accent-color: var(--green-700); }
 .payment-option div { display: flex; flex-direction: column; gap: 2px; }
 .checkout-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
+  padding: var(--space-1) 0;
+  border-bottom:1px solid var(--line);
 }
+.checkout-item:last-child { border-bottom:0; }
 .checkout-item-info { display: flex; flex-direction: column; gap: 2px; }
 .checkout-postal-note {
   margin-top: 10px;

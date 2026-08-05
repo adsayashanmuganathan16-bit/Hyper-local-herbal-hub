@@ -151,7 +151,7 @@ def test_successful_payment_creates_payouts_and_notifications(monkeypatch):
     db = ProcessingDb()
     calls = []
 
-    async def payouts(_db, order_id, now):
+    async def payouts(_db, order_id, now, payment_reference=None):
         calls.append(("payouts", order_id))
         return [{"seller_user_id": "seller-1"}]
 
@@ -161,9 +161,13 @@ def test_successful_payment_creates_payouts_and_notifications(monkeypatch):
     async def notify(user_id, title, message, link="/seller/earnings"):
         calls.append(("notify", user_id, title))
 
+    async def notify_admins(_db, title, message, link):
+        calls.append(("notify_admins", title, message, link))
+
     monkeypatch.setattr("app.services.financial_order_service.create_payouts_for_paid_order", payouts)
     monkeypatch.setattr("app.services.financial_notification_service.mark_marketplace_order_paid", paid)
     monkeypatch.setattr("app.services.financial_notification_service.create_financial_notification", notify)
+    monkeypatch.setattr("app.services.notification_realtime.notify_admins", notify_admins)
     event = VerifiedOnePayEvent("ORDER-1", "TX-1", Decimal("100.00"), "LKR", "1")
     request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
     result = asyncio.run(_record_verified_payment(db, event, {"transaction_id": "TX-1"}, request, "PAID"))
@@ -173,3 +177,4 @@ def test_successful_payment_creates_payouts_and_notifications(monkeypatch):
     assert ("payouts", "ORDER-1") in calls
     assert ("paid", "ORDER-1", "TX-1") in calls
     assert any(call[:2] == ("notify", "seller-1") for call in calls)
+    assert any(call[:2] == ("notify_admins", "Marketplace commission received") for call in calls)

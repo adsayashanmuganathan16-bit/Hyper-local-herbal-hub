@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   FiCamera,
   FiCheckCircle,
@@ -13,10 +13,9 @@ const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png'];
 export default function PlantUpload({ previewUrl, onSelect, onReset, onValidationError }) {
   const galleryInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
 
-  const handleSelection = (event) => {
-    const selected = event.target.files?.[0];
-    event.target.value = '';
+  const validate = (selected) => {
     if (!selected) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(selected.type)) {
@@ -29,13 +28,25 @@ export default function PlantUpload({ previewUrl, onSelect, onReset, onValidatio
     }
     onSelect(selected);
   };
+  const handleSelection = (event) => {
+    const selected = event.target.files?.[0];
+    event.target.value = '';
+    validate(selected);
+  };
 
   return (
     <>
       {!previewUrl ? (
-        <div className="identify-dropzone">
+        <div
+          className={`identify-dropzone ${dragging ? 'is-dragging' : ''}`}
+          onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
+          onDragOver={(event) => event.preventDefault()}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => { event.preventDefault(); setDragging(false); validate(event.dataTransfer.files?.[0]); }}
+        >
           <div className="identify-dropzone-icon"><FiUploadCloud /></div>
-          <h3>Choose how to add your photo</h3>
+          <h3>Drop a plant photo here</h3>
+          <p>or choose how to add your photo</p>
           <p>JPEG or PNG, up to 10 MB</p>
           <div className="identify-source-actions">
             <button

@@ -1,27 +1,27 @@
 .med-card {
   display: flex;
   flex-direction: column;
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
   overflow: hidden;
   text-decoration: none;
   color: inherit;
-  transition: all 0.3s ease;
+  transition: transform .25s var(--ease), box-shadow .25s var(--ease), border-color .25s var(--ease);
   height: 100%;
 }
 
 .med-card:hover {
-  border-color: var(--green-500);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-  transform: translateY(-6px);
+  border-color: var(--brand-300);
+  box-shadow: var(--shadow-float);
+  transform: translateY(-4px);
 }
 
 .med-card-img-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 1/1;
-  background: var(--green-50);
+  aspect-ratio: 4/3;
+  background: var(--brand-50);
   overflow: hidden;
 }
 
@@ -49,14 +49,14 @@
 
 .med-card-discount {
   left: 12px;
-  background: #ef4444;
-  color: #fff;
+  background: var(--danger);
+  color: var(--surface);
 }
 
 .med-card-rx {
   right: 12px;
-  background: #facc15;
-  color: #111827;
+  background: var(--cream-deep);
+  color: var(--gold-dark);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -65,17 +65,17 @@
 .med-card-oots {
   position: absolute;
   inset: 0;
-  background: rgba(255,255,255,.85);
+  background: rgba(255,255,255,.88);
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #dc2626;
+  color: var(--danger);
   font-size: 16px;
   font-weight: 700;
 }
 
 .med-card-body {
-  padding: 18px;
+  padding: var(--space-2);
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -83,7 +83,7 @@
 
 .med-card-category {
   font-size: 12px;
-  color: var(--green-700);
+  color: var(--brand-700);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .5px;
@@ -93,7 +93,7 @@
 .med-card-name {
   font-size: 17px;
   font-weight: 700;
-  color: var(--gray-900);
+  color: var(--ink);
   line-height: 1.35;
   margin-bottom: 8px;
 
@@ -104,7 +104,7 @@
 }
 
 .med-card-desc {
-  color: var(--gray-500);
+  color: var(--muted);
   font-size: 14px;
   line-height: 1.5;
   margin-bottom: 14px;
@@ -143,7 +143,7 @@
 .med-card-price-now {
   font-size: 20px;
   font-weight: 700;
-  color: var(--green-900);
+  color: var(--brand-900);
 }
 
 .med-card-price-was {

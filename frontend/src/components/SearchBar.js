@@ -4,7 +4,7 @@ import { FiSearch, FiX } from 'react-icons/fi';
 
 export default function SearchBar({
   compact,
-  placeholder = 'Search for herbal medicines, supplements, oils...',
+  placeholder = 'Search',
 }) {
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);

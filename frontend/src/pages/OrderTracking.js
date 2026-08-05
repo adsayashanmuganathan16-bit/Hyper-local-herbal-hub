@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { FiMapPin, FiTruck, FiPackage, FiCheck, FiArrowLeft } from 'react-icons/fi';
 import { orderApi } from '../api/orderApi';
 import { deliveryApi } from '../api/deliveryApi';
@@ -12,6 +12,7 @@ import ReviewStars from '../components/ReviewStars';
 import { reviewApi } from '../api/reviewApi';
 import PostalTrackingCard from '../components/PostalTrackingCard';
 import { toast } from 'react-toastify';
+import { productImageUrl, useProductImageFallback } from '../utils/productImage';
 
 const STATUS_STEPS = [
   { key: 'placed', label: 'Pending', icon: <FiPackage size={18} /> },
@@ -43,6 +44,7 @@ const STATUS_PROGRESS = {
 
 export default function OrderTracking() {
   const { id } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [order, setOrder] = useState(null);
   const [delivery, setDelivery] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -52,9 +54,12 @@ export default function OrderTracking() {
   const [reportingMissing, setReportingMissing] = useState(false);
 
   useEffect(() => {
+    let stopped = false;
+    let timer;
     async function fetch() {
       try {
         const { data } = await orderApi.getOrder(id);
+        if (stopped) return;
         setOrder(data);
         const { data: reviewData } = await reviewApi.getMyReviews({ page: 1 });
         setReviews((reviewData.items || []).filter((review) => review.order_id === id));
@@ -68,10 +73,44 @@ export default function OrderTracking() {
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        if (!stopped) setLoading(false);
       }
     }
     fetch();
+    // Stripe redirects before webhook delivery is guaranteed. Confirm the
+    // returned Session securely on the backend, then poll briefly while the
+    // webhook or return-page recovery completes the accounting transaction.
+    const sessionId = searchParams.get('session_id');
+    if (searchParams.get('payment') === 'success' && sessionId) {
+      let attempts = 0;
+      const refreshPayment = async () => {
+        try {
+          await orderApi.confirmStripePayment(id, sessionId);
+        } catch (error) {
+          if (![409, 422].includes(error.response?.status)) return;
+          toast.error(error.response?.data?.detail || 'Unable to confirm Stripe payment');
+        }
+      };
+      refreshPayment();
+      timer = window.setInterval(async () => {
+        attempts += 1;
+        try {
+          await refreshPayment();
+          const { data } = await orderApi.getOrder(id);
+          if (stopped) return;
+          setOrder(data);
+          if (data.payment_status === 'completed' || data.payment_status === 'failed' || attempts >= 10) {
+            window.clearInterval(timer);
+          }
+        } catch {
+          if (attempts >= 10) window.clearInterval(timer);
+        }
+      }, 2000);
+    }
+    return () => {
+      stopped = true;
+      if (timer) window.clearInterval(timer);
+    };
   }, [id]);
 
   if (loading) return <Loading />;
@@ -79,6 +118,16 @@ export default function OrderTracking() {
 
   const isCancelled = order.status === 'cancelled' || order.status === 'returned';
   const currentStepIndex = STATUS_PROGRESS[order.status] ?? 0;
+  const paymentReturn = searchParams.get('payment');
+  const paymentBanner = paymentReturn === 'cancelled'
+    ? { className: 'payment-return cancelled', title: 'Payment cancelled', message: 'Stripe Checkout was cancelled. Your order has not been paid.' }
+    : paymentReturn === 'failed' || order.payment_status === 'failed'
+      ? { className: 'payment-return failed', title: 'Payment failed', message: 'Stripe could not complete this payment. Please try again.' }
+      : paymentReturn === 'success' && order.payment_status === 'completed'
+        ? { className: 'payment-return success', title: 'Payment successful', message: 'Your payment is confirmed and the sellers have been notified.' }
+        : paymentReturn === 'success'
+          ? { className: 'payment-return pending', title: 'Confirming payment', message: 'Stripe returned successfully. We are securely waiting for webhook confirmation…' }
+          : null;
 
   return (
     <div className="page-wrapper">
@@ -87,6 +136,23 @@ export default function OrderTracking() {
           <Link to="/orders" className="btn-ghost flex items-center gap-2 mb-6" style={{ color: 'var(--green-800)' }}>
             <FiArrowLeft size={16} /> Back to Orders
           </Link>
+
+          {paymentBanner && (
+            <div className={paymentBanner.className} role="status">
+              <div><strong>{paymentBanner.title}</strong><p>{paymentBanner.message}</p></div>
+              <button
+                className="btn-ghost"
+                type="button"
+                onClick={() => {
+                  searchParams.delete('payment');
+                  searchParams.delete('session_id');
+                  setSearchParams(searchParams, { replace: true });
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
           <div className="track-header">
             <div>
@@ -203,7 +269,7 @@ export default function OrderTracking() {
               {order.items?.map((item, i) => (
                 <div key={i} className="track-item">
                   <div className="flex items-center gap-3">
-                    {item.image && <img src={item.image} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }} />}
+                    <img src={productImageUrl(item)} alt="" onError={useProductImageFallback} style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }} />
                     <div>
                       <span className="font-medium text-sm">{item.name}</span>
                       <span className="text-gray text-xs">Qty: {item.quantity}</span>
@@ -256,11 +322,11 @@ export default function OrderTracking() {
               <h3>Payment Info</h3>
               <div className="cart-summary-row">
                 <span>Method</span>
-                <span className="font-medium">{order.payment_method === 'cod' ? 'Cash on Delivery' : order.payment_method === 'mock' ? 'Demo Card Payment' : order.payment_method === 'onepay' ? 'OnePay Online Payment' : order.payment_method === 'payhere' ? 'PayHere Online Payment' : formatStatus(order.payment_method)}</span>
+                <span className="font-medium">{order.payment_method === 'cod' ? 'Cash on Delivery' : order.payment_method === 'stripe' ? 'Stripe Card Payment' : order.payment_method === 'mock' ? 'Demo Card Payment' : order.payment_method === 'onepay' ? 'OnePay Online Payment' : order.payment_method === 'payhere' ? 'PayHere Online Payment' : formatStatus(order.payment_method)}</span>
               </div>
               <div className="cart-summary-row">
                 <span>Status</span>
-                <span className={`badge ${getStatusColor(order.payment_status)}`}>{order.payment_status === 'pending' ? (order.payment_method === 'cod' ? 'Awaiting Cash on Delivery' : `Awaiting ${order.payment_method === 'mock' ? 'Demo Payment' : order.payment_method === 'onepay' ? 'OnePay' : 'PayHere'} Confirmation`) : formatStatus(order.payment_status)}</span>
+                <span className={`badge ${getStatusColor(order.payment_status)}`}>{order.payment_status === 'pending' ? (order.payment_method === 'cod' ? 'Awaiting Cash on Delivery' : `Awaiting ${order.payment_method === 'stripe' ? 'Stripe' : order.payment_method === 'mock' ? 'Demo Payment' : order.payment_method === 'onepay' ? 'OnePay' : 'PayHere'} Confirmation`) : formatStatus(order.payment_status)}</span>
               </div>
             </div>
           </div>

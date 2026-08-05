@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, HttpUrl
 
 from app.database import get_db
 from app.middleware.auth_middleware import require_seller
-from app.utils.helpers import serialize_doc
+from app.utils.helpers import serialize_doc, serialize_medicine
 
 router = APIRouter(prefix="/api/seller", tags=["Seller"])
 
@@ -25,18 +25,23 @@ async def seller_products(q: Optional[str] = Query(None), current_user: dict = D
     if q:
         query["name"] = {"$regex": q, "$options": "i"}
     products = await get_db().medicines.find(query).sort("created_at", -1).to_list(length=None)
-    return {"items": [serialize_doc(p) for p in products], "total": len(products)}
+    return {"items": [serialize_medicine(p) for p in products], "total": len(products)}
 
 
 async def _seller_orders(db, seller_id: str):
     product_ids = [str(p["_id"]) async for p in db.medicines.find({"seller_id": seller_id}, {"_id": 1})]
     orders = await db.orders.find({
         "items.medicine_id": {"$in": product_ids},
-        "$or": [{"payment_method": "cod"}, {"payment_status": "completed"}],
+        "deleted_by_sellers": {"$ne": seller_id},
     }).sort("created_at", -1).to_list(length=None)
     for order in orders:
         order["items"] = [item for item in order.get("items", []) if item.get("medicine_id") in product_ids]
         order["fulfillment"] = await db.seller_fulfillments.find_one({"order_id": str(order["_id"]), "seller_user_id": seller_id})
+        payment = await db.payments.find_one(
+            {"order_id": str(order["_id"])},
+            {"transaction_id": 1, "stripe_payment_intent_id": 1, "status": 1, "paid_at": 1},
+        )
+        order["payment"] = payment
         customer = await db.users.find_one({"_id": ObjectId(order["user_id"])}, {"name": 1, "phone": 1}) if ObjectId.is_valid(order.get("user_id", "")) else None
         order["customer"] = {"name": (customer or {}).get("name"), "phone": (customer or {}).get("phone")}
     return orders
@@ -46,6 +51,60 @@ async def _seller_orders(db, seller_id: str):
 async def seller_orders(current_user: dict = Depends(require_seller)):
     orders = await _seller_orders(get_db(), current_user["_id"])
     return {"items": [serialize_doc(o) for o in orders], "total": len(orders)}
+
+
+@router.delete("/orders/{order_id}")
+async def delete_seller_order(order_id: str, current_user: dict = Depends(require_seller)):
+    """Remove an eligible order from this seller's workspace without deleting marketplace accounting."""
+    if not ObjectId.is_valid(order_id):
+        raise HTTPException(404, "Order not found")
+    db = get_db()
+    product_ids = [
+        str(product["_id"])
+        async for product in db.medicines.find({"seller_id": current_user["_id"]}, {"_id": 1})
+    ]
+    order = await db.orders.find_one({
+        "_id": ObjectId(order_id),
+        "items.medicine_id": {"$in": product_ids},
+        "deleted_by_sellers": {"$ne": current_user["_id"]},
+    })
+    if not order:
+        raise HTTPException(404, "Order not found")
+    fulfillment = await db.seller_fulfillments.find_one({
+        "order_id": order_id,
+        "seller_user_id": current_user["_id"],
+    })
+    payment_status = str(order.get("payment_status") or "pending").lower()
+    order_status = str(order.get("status") or "pending").lower()
+    delivery_status = str(
+        (fulfillment or {}).get("status") or order.get("delivery_status") or order_status
+    ).lower()
+    protected_payment = payment_status in {"paid", "completed"}
+    protected_fulfillment = delivery_status in {
+        "processing", "ready_to_dispatch", "packed", "shipped",
+        "dispatched", "in_transit", "delivered",
+    } or order_status in {"processing", "preparing", "packed", "shipped", "delivered"}
+    eligible = (
+        order_status == "cancelled"
+        or payment_status == "failed"
+        or (payment_status == "pending" and delivery_status in {"pending", "awaiting_payment", "cancelled"})
+    )
+    if protected_payment or protected_fulfillment or not eligible:
+        raise HTTPException(409, "Delivered or paid orders cannot be deleted.")
+    now = utc_now()
+    await db.orders.update_one(
+        {"_id": order["_id"]},
+        {"$addToSet": {"deleted_by_sellers": current_user["_id"]}, "$set": {"updated_at": now}},
+    )
+    await db.audit_logs.insert_one({
+        "actor_user_id": current_user["_id"],
+        "action": "seller.order_removed",
+        "entity_type": "order",
+        "entity_id": order_id,
+        "details": {"payment_status": payment_status, "delivery_status": delivery_status},
+        "created_at": now,
+    })
+    return {"message": "Order deleted successfully."}
 
 
 @router.get("/customers")

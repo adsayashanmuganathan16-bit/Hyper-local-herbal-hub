@@ -1,15 +1,14 @@
 import React from 'react';
 import { FiTrash2, FiMinus, FiPlus, FiAlertCircle } from 'react-icons/fi';
 import { formatCurrency } from '../utils/helpers';
-
-const PLACEHOLDER_IMG = 'https://picsum.photos/seed/herb-cart/100/100.jpg';
+import { productImageUrl, useProductImageFallback } from '../utils/productImage';
 
 export default function CartItem({ item, onUpdateQty, onRemove }) {
   const price = item.discount_price || item.price;
 
   return (
     <div className="cart-item">
-      <img src={item.image || PLACEHOLDER_IMG} alt={item.name} className="cart-item-img" />
+      <img src={productImageUrl(item)} alt={item.name} className="cart-item-img" onError={useProductImageFallback} />
       <div className="cart-item-info">
         <h4 className="cart-item-name">{item.name}</h4>
         {item.requires_prescription && (

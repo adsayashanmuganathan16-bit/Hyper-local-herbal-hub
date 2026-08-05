@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { deliveryApi } from '../../api/deliveryApi';
 import { adminApi } from '../../api/adminApi';
 import Loading from '../../components/Loading';
+import { formatDateTime } from '../../utils/helpers';
 import DeliveryStaffMap from '../../components/DeliveryStaffMap';
 import { serviceAreaApi } from '../../api/serviceAreaApi';
 import { Link } from 'react-router-dom';
@@ -31,7 +32,7 @@ export default function DeliveryStaff() {
       <button className="btn btn-primary">Create Staff</button></form></div>
     <div className="admin-card mt-6"><h3>Staff</h3><div style={{overflowX:'auto'}}><table className="data-table"><thead><tr><th>Name</th><th>Phone</th><th>Vehicle</th><th>Status</th><th>Active</th><th>Action</th></tr></thead><tbody>{staff.map(s => <tr key={s.id}><td>{s.name}</td><td>{s.phone}</td><td>{s.vehicle_type}</td><td>{s.status}</td><td>{s.is_active ? 'Yes':'No'}</td><td><button className="btn btn-secondary btn-sm" onClick={() => deliveryApi.setActive(s.id,!s.is_active).then(load)}>{s.is_active?'Deactivate':'Activate'}</button> {s.location?.order_id&&<Link className="btn btn-primary btn-sm" to={`/admin/delivery/${s.location.order_id}/tracking`}>View Route</Link>}</td></tr>)}</tbody></table></div></div>
     <div className="admin-card mt-6"><h3>Orders Ready for Pickup</h3>{orders.map(o => <div className="flex items-center gap-3 mb-3" key={o.id}><b>#{o.id.slice(0,8)}</b><select className="form-input" defaultValue="" onChange={e=>assign(o.id,e.target.value)}><option value="">Assign available staff…</option>{staff.filter(s=>s.status==='Available'&&s.is_active).map(s=><option key={s.id} value={s.id}>{s.name} · {s.vehicle_type}</option>)}</select></div>)}{!orders.length&&<p className="text-gray">No orders awaiting assignment.</p>}</div>
-    <div className="admin-card mt-6"><h3>Delivery History</h3>{history.slice(0,20).map(h=><p className="text-sm" key={h.id}>{h.order_id?.slice(0,8)} · {h.event} · {new Date(h.created_at).toLocaleString()}</p>)}</div>
+    <div className="admin-card mt-6"><h3>Delivery History</h3>{history.slice(0,20).map(h=><p className="text-sm" key={h.id}>{h.order_id?.slice(0,8)} · {h.event} · {formatDateTime(h.created_at)}</p>)}</div>
     <div className="admin-card mt-6"><h3>Service Areas</h3><p className="text-gray text-sm">Add districts without changing source code. New areas become active immediately after creation.</p>
       {areas.map(a=><p key={a.id}><b>{a.name}</b> · {a.is_active?'Active':'Inactive'}</p>)}
       <form className="flex gap-2 mt-3" onSubmit={async e=>{e.preventDefault();await serviceAreaApi.create({name:areaName,accepted_names:[areaName],is_active:true});setAreaName('');toast.success('Service area added');load();}}>

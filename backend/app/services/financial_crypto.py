@@ -7,11 +7,17 @@ from app.config import settings
 
 
 def _cipher() -> Fernet:
-    key = settings.DATA_ENCRYPTION_KEY
-    if not key:
+    key = settings.DATA_ENCRYPTION_KEY.strip()
+    if not key or key == "your_fernet_encryption_key":
         # Keeps local development usable; production must set a dedicated key.
         key = base64.urlsafe_b64encode(hashlib.sha256(settings.SECRET_KEY.encode()).digest()).decode()
-    return Fernet(key.encode())
+    try:
+        return Fernet(key.encode())
+    except ValueError as exc:
+        raise RuntimeError(
+            "DATA_ENCRYPTION_KEY must be a valid Fernet key; generate one with "
+            "`python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"`"
+        ) from exc
 
 
 def encrypt_sensitive(value: str) -> str:

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FiArrowRight,
@@ -8,8 +8,11 @@ import {
   FiShoppingBag,
   FiTruck,
 } from 'react-icons/fi';
+import { BadgeCheck, Leaf, Quote, Sparkles, Star, Store, SunMedium } from 'lucide-react';
 import SearchBar from '../components/SearchBar';
 import { useAuth } from '../context/AuthContext';
+import { medicineApi } from '../api/medicineApi';
+import MedicineCard from '../components/MedicineCard';
 
 const HERO_ART = process.env.PUBLIC_URL + '/assets/herbal-hero.png';
 
@@ -45,6 +48,17 @@ const FEATURES = [
     description: 'Receive herbal products quickly from nearby sellers within your service area.',
   },
 ];
+const CATEGORIES = [
+  ['Ayurvedic', 'Ancient formulations for everyday balance', '🌿'],
+  ['Herbal Supplements', 'Plant-powered daily wellness support', '🍃'],
+  ['Herbal Skincare', 'Gentle care rooted in botanical wisdom', '🌼'],
+  ['Essential Oils', 'Pure aromatic rituals for body and mind', '🫧'],
+];
+const TESTIMONIALS = [
+  ['“I found authentic local products and could follow every delivery step. It feels personal and dependable.”', 'Niranjana', 'Verified customer'],
+  ['“Herbal Hub gives our small store the tools and visibility of a much larger business.”', 'Arul Wellness', 'Approved seller'],
+  ['“The plant identifier helped me learn first, then find related products from sellers nearby.”', 'Kavitha', 'Community member'],
+];
 
 function Stat({ icon, value, label }) {
   return (
@@ -74,6 +88,11 @@ function FeatureCard({ icon: Icon, number, title, description }) {
 
 export default function Home() {
   const { user } = useAuth();
+  const [featured, setFeatured] = useState([]);
+  useEffect(() => {
+    medicineApi.search({ page: 1, page_size: 4, sort_by: 'rating', available_only: true })
+      .then(({ data }) => setFeatured(data.items || [])).catch(() => {});
+  }, []);
 
   return (
     <div className="home-page">
@@ -148,6 +167,40 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <section className="home-market-section home-category-section">
+        <div className="container">
+          <div className="premium-section-heading"><div><span>Shop by ritual</span><h2>Wellness for every part of your day.</h2></div><p>Thoughtfully organized collections make traditional herbal care easy to explore.</p></div>
+          <div className="home-category-grid">{CATEGORIES.map(([name,description,icon])=><Link className="home-category-premium" key={name} to={`/shop?category=${encodeURIComponent(name)}`}><span>{icon}</span><div><h3>{name}</h3><p>{description}</p><b>Explore collection <FiArrowRight/></b></div></Link>)}</div>
+        </div>
+      </section>
+
+      {!!featured.length && <section className="home-market-section">
+        <div className="container">
+          <div className="premium-section-heading"><div><span>Community favourites</span><h2>Featured herbal essentials.</h2></div><Link to="/shop">Shop all products <FiArrowRight/></Link></div>
+          <div className="grid-4">{featured.map(product=><MedicineCard medicine={product} key={product.id}/>)}</div>
+        </div>
+      </section>}
+
+      <section className="home-market-section home-seller-showcase">
+        <div className="container">
+          <div className="premium-section-heading light"><div><span>Trusted local expertise</span><h2>Meet the people behind your wellness.</h2></div><p>Approved sellers combine traditional knowledge with responsible modern commerce.</p></div>
+          <div className="home-trust-grid">
+            <article><span><Store/></span><div><small>APPROVED SELLERS</small><strong>Local businesses, verified</strong><p>Every active seller has a reviewed marketplace profile.</p></div></article>
+            <article><span><BadgeCheck/></span><div><small>TRANSPARENT PRODUCTS</small><strong>Know what you are buying</strong><p>Ingredients, benefits, dosage, and seller details in one place.</p></div></article>
+            <article><span><Leaf/></span><div><small>COMMUNITY FIRST</small><strong>Spend locally, grow locally</strong><p>Your orders support herbal enterprises in your service area.</p></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section className="home-market-section">
+        <div className="container">
+          <div className="premium-section-heading"><div><span>Stories from the community</span><h2>Trusted through every step.</h2></div><div className="home-rating"><Star/><Star/><Star/><Star/><Star/><b>Loved locally</b></div></div>
+          <div className="home-testimonials">{TESTIMONIALS.map(([text,name,role])=><article key={name}><Quote/><p>{text}</p><div><span>{name[0]}</span><strong>{name}<small>{role}</small></strong></div></article>)}</div>
+        </div>
+      </section>
+
+      <section className="home-tip-section"><div className="container"><article><div className="home-tip-icon"><SunMedium/></div><div><span><Sparkles/> Daily herbal tip</span><h2>Small rituals create lasting wellbeing.</h2><p>Steep fresh herbs with water just below boiling and keep the cup covered for 5–10 minutes to preserve delicate aromatic oils.</p></div><Link to="/identify-plant" className="btn btn-white">Identify a plant <FiArrowRight/></Link></article></div></section>
     </div>
   );
 }

@@ -60,6 +60,25 @@ def test_image_signature_validation_rejects_spoofed_content():
     assert not has_valid_image_signature(b"not-an-image", "image/jpeg")
 
 
+def test_profile_image_display_url_only_signs_configured_bucket_objects(monkeypatch):
+    bucket_url = (
+        f"https://{auth.s3_service.bucket_name}.s3."
+        f"{auth.settings.AWS_REGION}.amazonaws.com/profile-images/avatar.png"
+    )
+    monkeypatch.setattr(
+        auth.s3_service.s3_client,
+        "generate_presigned_url",
+        lambda *args, **kwargs: f"{bucket_url}?signed=true",
+    )
+
+    user = auth.serialize_user({"_id": ObjectId(), "profile_image": bucket_url})
+    assert user["profile_image"] == f"{bucket_url}?signed=true"
+
+    local_url = "http://localhost:8000/uploads/profile-images/avatar.png"
+    local_user = auth.serialize_user({"_id": ObjectId(), "profile_image": local_url})
+    assert local_user["profile_image"] == local_url
+
+
 def test_profile_image_upload_updates_and_sanitizes_user(monkeypatch):
     user_id = ObjectId()
     user = {
@@ -85,6 +104,7 @@ def test_profile_image_upload_updates_and_sanitizes_user(monkeypatch):
     )
 
     assert response["user"]["profile_image"].endswith("avatar.png")
+    assert response["image_url"].endswith("avatar.png")
     assert "password" not in response["user"]
 
 

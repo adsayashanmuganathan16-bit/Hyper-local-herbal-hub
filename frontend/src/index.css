@@ -182,6 +182,12 @@
     border-color: var(--green-600);
     box-shadow: 0 0 0 3px rgba(82,183,136,0.15);
   }
+  .form-input.input-error {
+    border-color: var(--red-500);
+  }
+  .form-input.input-error:focus {
+    box-shadow: 0 0 0 3px rgba(239,68,68,0.15);
+  }
   .form-input::placeholder { color: var(--gray-400); }
   .form-select {
     appearance: none;

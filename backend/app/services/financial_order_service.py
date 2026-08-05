@@ -2,11 +2,30 @@ from app.utils.time import utc_now
 from datetime import datetime
 from decimal import Decimal
 
+from bson import ObjectId
+
 from app.config import settings
 from app.services.commission_service import calculate_commission, current_commission_rate, money
 
 
-async def create_financial_order(db, order_id: str, customer_id: str, total_amount, seller_gross_by_user_id: dict[str, Decimal]):
+def payout_amounts(allocation: dict) -> tuple[Decimal, Decimal, Decimal, Decimal, Decimal]:
+    """Return merchandise, delivery, gross, commission, and net amounts."""
+    merchandise = money(allocation.get("merchandise_amount", allocation["gross_amount"]))
+    delivery = money(allocation.get("delivery_amount", "0"))
+    gross = money(merchandise + delivery)
+    rate = Decimal(str(allocation["commission_rate"]))
+    commission, net = calculate_commission(gross, rate)
+    return merchandise, delivery, gross, commission, net
+
+
+async def create_financial_order(
+    db,
+    order_id: str,
+    customer_id: str,
+    total_amount,
+    seller_gross_by_user_id: dict[str, Decimal],
+    delivery_by_user_id: dict[str, Decimal] | None = None,
+):
     """Persist immutable multi-seller allocations in MongoDB."""
     if not seller_gross_by_user_id:
         raise ValueError("The order does not contain products assigned to approved sellers")
@@ -24,25 +43,41 @@ async def create_financial_order(db, order_id: str, customer_id: str, total_amou
     if missing := set(user_ids).difference(by_user):
         raise ValueError("Every product seller must have an approved financial profile")
 
-    # Seller gross is the merchandise value only. Delivery fees and other
-    # customer-facing charges belong to the platform and must not inflate
-    # seller earnings or commission.
+    # Commission applies to merchandise only. Delivery fees are passed through
+    # to the seller responsible for dispatch and are not commissionable.
     allocated = {user_id: money(value) for user_id, value in seller_gross_by_user_id.items()}
+    delivery_allocated = {
+        user_id: money(value)
+        for user_id, value in (delivery_by_user_id or {}).items()
+        if money(value) > 0
+    }
+    if missing_delivery_sellers := set(delivery_allocated).difference(allocated):
+        raise ValueError(
+            f"Delivery fees can only be assigned to an order seller: {', '.join(sorted(missing_delivery_sellers))}"
+        )
+    delivery_total = sum(delivery_allocated.values(), Decimal("0"))
+    if money(raw_total + delivery_total) != final_total:
+        raise ValueError("Merchandise and delivery allocations must equal the order total")
     rate, now = await current_commission_rate(db), utc_now()
 
     await db.financial_orders.insert_one({
         "order_id": order_id, "customer_id": customer_id, "total_amount": str(final_total),
         "merchandise_amount": str(raw_total),
+        "delivery_amount": str(money(delivery_total)),
         "currency": "LKR", "payment_status": "PENDING", "order_status": "PLACED",
         "created_at": now, "updated_at": now,
     })
     allocations = []
-    for user_id, gross in allocated.items():
+    for user_id, merchandise_gross in allocated.items():
+        delivery_amount = delivery_allocated.get(user_id, Decimal("0"))
+        gross = money(merchandise_gross + delivery_amount)
         commission, net = calculate_commission(gross, rate)
         allocations.append({
             "order_id": order_id, "seller_id": str(by_user[user_id]["_id"]), "seller_user_id": user_id,
-            "gross_amount": str(gross), "commission_rate": str(rate),
-            "commission_amount": str(commission), "net_amount": str(net), "created_at": now,
+            "merchandise_amount": str(merchandise_gross), "gross_amount": str(gross),
+            "commission_rate": str(rate),
+            "commission_amount": str(commission), "delivery_amount": str(delivery_amount),
+            "net_amount": str(net), "created_at": now,
         })
     try:
         result = await db.seller_order_allocations.insert_many(allocations)
@@ -61,23 +96,76 @@ async def create_financial_order(db, order_id: str, customer_id: str, total_amou
     return {"order_id": order_id, "total_amount": str(final_total), "allocations": len(allocations)}
 
 
-async def create_payouts_for_paid_order(db, order_id: str, now=None) -> list[dict]:
-    """Create one immutable payout per allocation; safe to call repeatedly."""
+async def create_payouts_for_paid_order(
+    db,
+    order_id: str,
+    now=None,
+    payment_reference: str | None = None,
+) -> list[dict]:
+    """Upsert one payout per verified seller allocation; safe to call repeatedly."""
     now = now or utc_now()
+    payment = await db.payments.find_one({"order_id": order_id, "status": "PAID"})
+    if not payment:
+        raise ValueError("Payouts can only be created for a PAID payment")
+    stored_reference = payment.get("transaction_id")
+    if payment_reference and stored_reference and payment_reference != stored_reference:
+        raise ValueError("Payment reference does not match the paid order")
     allocations = await db.seller_order_allocations.find({"order_id": order_id}).to_list(length=None)
+    eligible_allocations = []
     for allocation in allocations:
+        seller = await db.sellers.find_one({"_id": ObjectId(allocation["seller_id"])})
         bank = await db.seller_bank_accounts.find_one({"seller_id": allocation["seller_id"]})
+        if (
+            not seller
+            or seller.get("verification_status") != "VERIFIED"
+            or not bank
+            or not bank.get("verified")
+        ):
+            continue
+        merchandise, delivery, gross, commission, net = payout_amounts(allocation)
+        stripe_session_id = (
+            payment_reference
+            if payment_reference and payment_reference.startswith("cs_")
+            else None
+        )
+        if stripe_session_id:
+            session_payout = await db.payouts.find_one({
+                "stripe_checkout_session_id": stripe_session_id,
+                "seller_id": allocation["seller_id"],
+            })
+            if session_payout and session_payout.get("order_id") != order_id:
+                raise ValueError(
+                    "Stripe Checkout Session is already linked to another seller payout"
+                )
         await db.payouts.update_one(
-            {"allocation_id": str(allocation["_id"])},
-            {"$setOnInsert": {
-                "seller_id": allocation["seller_id"], "seller_user_id": allocation["seller_user_id"],
-                "order_id": order_id, "allocation_id": str(allocation["_id"]),
+            {"order_id": order_id, "seller_id": allocation["seller_id"]},
+            {"$set": {
+                "allocation_id": str(allocation["_id"]),
                 "bank_account_id": str(bank["_id"]) if bank else None,
-                "gross_amount": allocation["gross_amount"], "commission_rate": allocation["commission_rate"],
-                "commission_amount": allocation["commission_amount"], "net_amount": allocation["net_amount"],
-                "status": "PENDING", "payout_mode": "manual", "provider": "manual_bank_transfer",
+                "payment_transaction_id": payment_reference,
+                "stripe_checkout_session_id": stripe_session_id,
+                "merchandise_amount": str(merchandise),
+                "gross_amount": str(gross),
+                "commission_rate": allocation["commission_rate"],
+                "commission_amount": str(commission),
+                "commission_status": "EARNED",
+                "delivery_amount": str(delivery),
+                "net_amount": str(net),
+                "payment_status": "PAID",
+                "updated_at": now,
+            }, "$setOnInsert": {
+                "seller_id": allocation["seller_id"], "seller_user_id": allocation["seller_user_id"],
+                "order_id": order_id,
+                "status": "PENDING", "payout_status": "PENDING",
+                "payout_mode": "manual", "provider": "manual_bank_transfer",
                 "transaction_reference": None, "failure_reason": None, "retry_count": 0,
-                "created_at": now, "updated_at": now, "paid_at": None,
+                "created_at": now, "paid_at": None,
             }}, upsert=True,
         )
-    return allocations
+        eligible_allocations.append({
+            **allocation,
+            "gross_amount": str(gross),
+            "commission_amount": str(commission),
+            "net_amount": str(net),
+        })
+    return eligible_allocations

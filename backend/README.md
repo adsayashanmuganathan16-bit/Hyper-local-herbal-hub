@@ -137,6 +137,30 @@ Some tests use environment overrides. Keep `.env` local and never commit it.
   unavailable, the endpoint safely falls back to its built-in bilingual text.
 - Payment webhook URLs must be public HTTPS endpoints when testing external
   payment providers; localhost cannot receive provider callbacks.
+- Stripe uses a hosted Checkout page, so card details never pass through this
+  application. To enable it, set:
+
+  ```env
+  PAYMENT_PROVIDER=stripe
+  STRIPE_SECRET_KEY=sk_test_...
+  STRIPE_WEBHOOK_SECRET=whsec_...
+  STRIPE_SUCCESS_URL=http://localhost:3000/orders/{order_id}?payment=success&session_id={CHECKOUT_SESSION_ID}
+  STRIPE_CANCEL_URL=http://localhost:3000/orders/{order_id}?payment=cancelled
+  ```
+
+  In Stripe Workbench, create an event destination for
+  `https://your-api.example/api/webhooks/stripe` and subscribe to
+  `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+  `checkout.session.async_payment_failed`, and `checkout.session.expired`.
+  For local testing, run:
+
+  ```bash
+  stripe listen --forward-to localhost:8000/api/webhooks/stripe
+  ```
+
+  Copy the CLI's `whsec_...` signing secret into `STRIPE_WEBHOOK_SECRET`, then
+  restart the API. Keep using Stripe test keys until the full webhook flow has
+  been verified.
 - `backend/.env` is ignored by Git. Use `.env.example` to document variables
   without committing credentials.
 
