@@ -42,22 +42,10 @@ export default function TermsConditions() {
         <div className="container support-hero-inner">
           <span className="support-eyebrow">Marketplace agreement</span>
           <h1>Terms &amp; Conditions</h1>
-          <p>
-            These terms provide a clear and fair framework for customers, sellers, and
-            other users of the Hyper-Local Herbal Hub marketplace.
-          </p>
         </div>
       </header>
 
       <main className="container policy-content">
-        <div className="policy-intro">
-          <p>
-            By creating an account or using this platform, you agree to use its services
-            responsibly and follow the conditions set out below.
-          </p>
-          <span>Effective: July 2026</span>
-        </div>
-
         <div className="terms-grid">
           {TERMS.map((term, index) => (
             <section className="term-card" key={term.title}>

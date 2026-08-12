@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { financialApi } from '../api/financialApi';
 import { useAuth } from '../context/AuthContext';
@@ -13,10 +13,15 @@ const fields = [
 ];
 
 export default function SellerRegister() {
-  const [form, setForm] = useState(Object.fromEntries(fields.map(([key]) => [key, ''])));
+  const location = useLocation();
+  const basic = location.state?.basicRegistration || {};
+  const [form, setForm] = useState(() => ({
+    ...Object.fromEntries(fields.map(([key]) => [key, ''])),
+    name: basic.name || '', email: basic.email || '', phone: basic.phone || '', password: basic.password || '',
+  }));
   const [loading, setLoading] = useState(false);
   const { updateUser } = useAuth();
   const navigate = useNavigate();
   const submit = async (event) => { event.preventDefault(); try { setLoading(true); const payload={...form,address:{address_line1:form.address_line1,city:form.city,state:form.state,pincode:form.pincode}}; delete payload.address_line1;delete payload.city;delete payload.state;delete payload.pincode; const { data } = await financialApi.registerSellerAccount(payload); localStorage.setItem('herbal_hub_token', data.access_token); localStorage.setItem('herbal_hub_refresh_token', data.refresh_token); updateUser(data.user); toast.success('Seller application submitted for admin approval'); navigate('/seller'); } catch (e) { toast.error(e.response?.data?.detail || 'Seller registration failed'); } finally { setLoading(false); } };
-  return <div className="auth-page"><div className="auth-card" style={{ maxWidth: 760 }}><div className="auth-header"><h1 className="auth-title">Become a Herbal Hub Seller</h1><p className="auth-subtitle">Your NIC and bank account number are encrypted.</p></div><form className="auth-form" onSubmit={submit}><div className="grid-2">{fields.map(([key, label, type]) => <div className="form-group" key={key}><label className="form-label">{label}</label><input className="form-input" required type={type} minLength={key === 'password' ? 8 : undefined} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })}/></div>)}</div><button className="btn btn-primary btn-lg" style={{ width: '100%' }} disabled={loading}>{loading ? 'Submitting…' : 'Submit Seller Application'}</button></form><p className="auth-footer-text">Already registered? <Link to="/login" className="auth-link">Login</Link></p></div></div>;
+  return <div className="auth-page"><div className="auth-card" style={{ maxWidth: 760 }}><div className="auth-header"><h1 className="auth-title">Become a Herbal Hub Seller</h1><p className="auth-subtitle">Complete every identity, store, and payment field before entering your seller account. Your NIC and bank account number are encrypted.</p></div><form className="auth-form" onSubmit={submit}><div className="grid-2">{fields.map(([key, label, type]) => <div className="form-group" key={key}><label className="form-label">{label}</label><input className="form-input" required type={type} minLength={key === 'password' ? 8 : undefined} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })}/></div>)}</div><button className="btn btn-primary btn-lg" style={{ width: '100%' }} disabled={loading}>{loading ? 'Submitting…' : 'Complete Details & Continue'}</button></form><p className="auth-footer-text">Already completed your seller application? <Link to="/login" state={{ selectedRole: 'seller' }} className="auth-link">Seller Login</Link></p></div></div>;
 }

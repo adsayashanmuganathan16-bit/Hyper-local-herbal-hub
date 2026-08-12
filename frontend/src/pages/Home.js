@@ -8,7 +8,7 @@ import {
   FiShoppingBag,
   FiTruck,
 } from 'react-icons/fi';
-import { BadgeCheck, Leaf, Quote, Sparkles, Star, Store, SunMedium } from 'lucide-react';
+import { BadgeCheck, Droplets, Flower2, HeartPulse, Leaf, Store } from 'lucide-react';
 import SearchBar from '../components/SearchBar';
 import { useAuth } from '../context/AuthContext';
 import { medicineApi } from '../api/medicineApi';
@@ -49,17 +49,11 @@ const FEATURES = [
   },
 ];
 const CATEGORIES = [
-  ['Ayurvedic', 'Ancient formulations for everyday balance', '🌿'],
-  ['Herbal Supplements', 'Plant-powered daily wellness support', '🍃'],
-  ['Herbal Skincare', 'Gentle care rooted in botanical wisdom', '🌼'],
-  ['Essential Oils', 'Pure aromatic rituals for body and mind', '🫧'],
+  { name: 'Ayurvedic', description: 'Ancient formulations for everyday balance', icon: Leaf, number: '01' },
+  { name: 'Herbal Supplements', description: 'Plant-powered daily wellness support', icon: HeartPulse, number: '02' },
+  { name: 'Herbal Skincare', description: 'Gentle care rooted in botanical wisdom', icon: Flower2, number: '03' },
+  { name: 'Essential Oils', description: 'Pure aromatic rituals for body and mind', icon: Droplets, number: '04' },
 ];
-const TESTIMONIALS = [
-  ['“I found authentic local products and could follow every delivery step. It feels personal and dependable.”', 'Niranjana', 'Verified customer'],
-  ['“Herbal Hub gives our small store the tools and visibility of a much larger business.”', 'Arul Wellness', 'Approved seller'],
-  ['“The plant identifier helped me learn first, then find related products from sellers nearby.”', 'Kavitha', 'Community member'],
-];
-
 function Stat({ icon, value, label }) {
   return (
     <div className="home-stat">
@@ -170,15 +164,32 @@ export default function Home() {
 
       <section className="home-market-section home-category-section">
         <div className="container">
-          <div className="premium-section-heading"><div><span>Shop by ritual</span><h2>Wellness for every part of your day.</h2></div><p>Thoughtfully organized collections make traditional herbal care easy to explore.</p></div>
-          <div className="home-category-grid">{CATEGORIES.map(([name,description,icon])=><Link className="home-category-premium" key={name} to={`/shop?category=${encodeURIComponent(name)}`}><span>{icon}</span><div><h3>{name}</h3><p>{description}</p><b>Explore collection <FiArrowRight/></b></div></Link>)}</div>
+          <div className="premium-section-heading home-category-heading">
+            <div><span>Shop by ritual</span><h2>Wellness for every part of your day.</h2></div>
+            <p>Thoughtfully organized collections make traditional herbal care easy to explore.</p>
+          </div>
+          <div className="home-category-grid">
+            {CATEGORIES.map(({ name, description, icon: Icon, number }) => (
+              <Link className="home-category-premium" key={name} to={`/shop?category=${encodeURIComponent(name)}`}>
+                <div className="home-category-card-top">
+                  <span className="home-category-icon"><Icon size={28} strokeWidth={1.8} /></span>
+                  <span className="home-category-number">{number}</span>
+                </div>
+                <div className="home-category-copy">
+                  <h3>{name}</h3>
+                  <p>{description}</p>
+                </div>
+                <span className="home-category-link">Explore collection <i><FiArrowRight /></i></span>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
-      {!!featured.length && <section className="home-market-section">
-        <div className="container">
-          <div className="premium-section-heading"><div><span>Community favourites</span><h2>Featured herbal essentials.</h2></div><Link to="/shop">Shop all products <FiArrowRight/></Link></div>
-          <div className="grid-4">{featured.map(product=><MedicineCard medicine={product} key={product.id}/>)}</div>
+      {!!featured.length && <section className={`home-market-section home-featured-section product-count-${Math.min(featured.length, 4)}`}>
+        <div className={`container home-featured-layout product-count-${Math.min(featured.length, 4)}`}>
+          <div className="premium-section-heading home-featured-heading"><div><span>Community favourites</span><h2>Featured herbal essentials.</h2></div><Link to="/shop">Shop all products <FiArrowRight/></Link></div>
+          <div className="home-featured-products">{featured.map(product=><MedicineCard medicine={product} key={product.id}/>)}</div>
         </div>
       </section>}
 
@@ -193,14 +204,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="home-market-section">
-        <div className="container">
-          <div className="premium-section-heading"><div><span>Stories from the community</span><h2>Trusted through every step.</h2></div><div className="home-rating"><Star/><Star/><Star/><Star/><Star/><b>Loved locally</b></div></div>
-          <div className="home-testimonials">{TESTIMONIALS.map(([text,name,role])=><article key={name}><Quote/><p>{text}</p><div><span>{name[0]}</span><strong>{name}<small>{role}</small></strong></div></article>)}</div>
-        </div>
-      </section>
-
-      <section className="home-tip-section"><div className="container"><article><div className="home-tip-icon"><SunMedium/></div><div><span><Sparkles/> Daily herbal tip</span><h2>Small rituals create lasting wellbeing.</h2><p>Steep fresh herbs with water just below boiling and keep the cup covered for 5–10 minutes to preserve delicate aromatic oils.</p></div><Link to="/identify-plant" className="btn btn-white">Identify a plant <FiArrowRight/></Link></article></div></section>
     </div>
   );
 }

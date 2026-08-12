@@ -9,8 +9,8 @@ from fastapi.responses import HTMLResponse
 from app.database import get_db
 from app.financial.schemas import BankAccountUpdate, SellerAccountRegistration, SellerRegistration
 from app.middleware.auth_middleware import require_seller
-from app.services.financial_crypto import encrypt_sensitive
-from app.utils.helpers import generate_secure_token, hash_password, serialize_doc
+from app.services.financial_crypto import decrypt_sensitive, encrypt_sensitive
+from app.utils.helpers import generate_secure_token, hash_password, serialize_doc, verify_password
 from app.middleware.auth_middleware import create_access_token, create_refresh_token
 from app.services.email_service import email_service
 from app.config import settings
@@ -54,18 +54,46 @@ async def register_seller_account(data: SellerAccountRegistration):
     db, now = get_db(), utc_now()
     auto_verify = settings.AUTO_VERIFY_SELLERS
     verification_status = "VERIFIED" if auto_verify else "PENDING"
-    location = await validate_service_address(db, data.address)
+    location = await validate_service_address(db, data.address, allow_configured_fallback=True)
     email = str(data.email).lower()
-    if await db.users.find_one({"$or": [{"email": email}, {"phone": data.phone}]}):
-        raise HTTPException(409, "Email or phone is already registered")
-    token = generate_secure_token()
-    user_doc = {"name": data.name, "email": email, "phone": data.phone,
-                "password": hash_password(data.password), "role": "seller", "is_active": True,
-                "email_verified": False, "business_name": data.business_name, "verification_token": token,
-                "verification_token_expires": now + timedelta(hours=settings.EMAIL_VERIFICATION_EXPIRE_HOURS),
-                "address": None, "profile_image": None, "created_at": now, "updated_at": now}
-    user_result = await db.users.insert_one(user_doc)
-    user_id = str(user_result.inserted_id)
+    conflicts = await db.users.find({"$or": [{"email": email}, {"phone": data.phone}]}).to_list(length=None)
+    active_conflicts = [row for row in conflicts if row.get("is_active", True) or not row.get("removed_at")]
+    matching_customer = None
+    if len(active_conflicts) == 1:
+        candidate = active_conflicts[0]
+        if candidate.get("role") == "customer" and candidate.get("email") == email:
+            if not candidate.get("password") or not verify_password(data.password, candidate["password"]):
+                raise HTTPException(401, "Enter your current customer password to continue as a seller")
+            matching_customer = candidate
+    if active_conflicts and not matching_customer:
+        email_taken = any(row.get("email") == email for row in active_conflicts)
+        phone_taken = any(row.get("phone") == data.phone for row in active_conflicts)
+        if email_taken and phone_taken:
+            detail = "Email and phone are already registered"
+        elif email_taken:
+            detail = "Email is already registered"
+        else:
+            detail = "Phone is already registered"
+        raise HTTPException(409, detail)
+    # Older Admin deletions kept identifiers on the inactive record. Release
+    # them now while retaining the old id for order and audit history.
+    for removed_user in (row for row in conflicts if row not in active_conflicts):
+        await db.users.update_one({"_id": removed_user["_id"]}, {
+            "$set": {"email": f"removed+{removed_user['_id']}@deleted.herbalhub.invalid", "updated_at": now},
+            "$unset": {"phone": "", "google_sub": ""},
+        })
+    token = generate_secure_token() if not matching_customer else None
+    if matching_customer:
+        user_id = str(matching_customer["_id"])
+        user_result = None
+    else:
+        user_doc = {"name": data.name, "email": email, "phone": data.phone,
+                    "password": hash_password(data.password), "role": "seller", "is_active": True,
+                    "email_verified": False, "business_name": data.business_name, "verification_token": token,
+                    "verification_token_expires": now + timedelta(hours=settings.EMAIL_VERIFICATION_EXPIRE_HOURS),
+                    "address": None, "profile_image": None, "created_at": now, "updated_at": now}
+        user_result = await db.users.insert_one(user_doc)
+        user_id = str(user_result.inserted_id)
     try:
         seller_doc = {"user_id": user_id, "name": data.name, "email": email, "phone": data.phone,
                       "nic_encrypted": encrypt_sensitive(data.nic), "business_name": data.business_name,
@@ -86,17 +114,24 @@ async def register_seller_account(data: SellerAccountRegistration):
             "verified_at": now if auto_verify else None,
             "verified_by": "AUTO_VERIFY_SELLERS" if auto_verify else None,
             "created_at": now, "updated_at": now})
+        if matching_customer:
+            await db.users.update_one({"_id": matching_customer["_id"]}, {"$set": {
+                "name": data.name, "phone": data.phone, "role": "seller", "business_name": data.business_name,
+                "store_name": data.business_name, "updated_at": now,
+            }})
     except Exception:
-        await db.users.delete_one({"_id": user_result.inserted_id})
+        if user_result:
+            await db.users.delete_one({"_id": user_result.inserted_id})
         await db.sellers.delete_one({"user_id": user_id})
         raise
-    await email_service.send_verification_email(email, data.name, token)
+    if token:
+        await email_service.send_verification_email(email, data.name, token)
     claims = {"sub": user_id, "role": "seller"}
     return {"message": "Seller application submitted", "access_token": create_access_token(claims),
             "refresh_token": create_refresh_token(claims), "token_type": "bearer",
             "user": {"id": user_id, "name": data.name, "email": email, "phone": data.phone,
                      "role": "seller", "business_name": data.business_name,
-                     "email_verified": False,
+                     "email_verified": matching_customer.get("email_verified", False) if matching_customer else False,
                      "seller_approval_status": seller_doc["approval_status"],
                      "seller_verification_status": verification_status}}
 
@@ -106,6 +141,13 @@ async def register_seller(data: SellerRegistration, user=Depends(require_seller)
     db, now = get_db(), utc_now()
     auto_verify = settings.AUTO_VERIFY_SELLERS
     verification_status = "VERIFIED" if auto_verify else "PENDING"
+    user_object_id = ObjectId(user["_id"])
+    phone_owner = await db.users.find_one({"phone": data.phone, "_id": {"$ne": user_object_id}})
+    if phone_owner:
+        raise HTTPException(
+            409,
+            "This mobile number is already used by another account. Enter a different mobile number.",
+        )
     seller_doc = await db.sellers.find_one({"user_id": user["_id"]})
     location = (
         {
@@ -117,7 +159,7 @@ async def register_seller(data: SellerRegistration, user=Depends(require_seller)
         and seller_doc.get("latitude") is not None
         and seller_doc.get("longitude") is not None
         and seller_doc.get("service_area_id")
-        else await validate_service_address(db, data.address)
+        else await validate_service_address(db, data.address, allow_configured_fallback=True)
     )
     seller_update = {"name": data.name, "email": str(data.email).lower(), "phone": data.phone,
                      "nic_encrypted": encrypt_sensitive(data.nic), "business_name": data.business_name,
@@ -151,6 +193,17 @@ async def register_seller(data: SellerRegistration, user=Depends(require_seller)
         {"$set": bank_doc, "$setOnInsert": {"created_at": now}},
         upsert=True,
     )
+    await db.users.update_one(
+        {"_id": user_object_id},
+        {"$set": {
+            "name": data.name,
+            "phone": data.phone,
+            "business_name": data.business_name,
+            "store_name": data.business_name,
+            "address": data.address,
+            "updated_at": now,
+        }},
+    )
     bank_doc["created_at"] = now
     return {"message": "Seller payment details saved successfully",
             "seller": seller_view(seller_doc, bank_doc)}
@@ -161,7 +214,15 @@ async def get_seller_profile(user=Depends(require_seller)):
     db = get_db()
     seller = await current_seller(db, user["_id"])
     bank = await db.seller_bank_accounts.find_one({"seller_id": str(seller["_id"])})
-    return seller_view(seller, bank)
+    result = seller_view(seller, bank)
+    admin = await db.users.find_one({"role": "admin", "is_active": {"$ne": False}}, {"_id": 1})
+    admin_bank = await db.user_bank_accounts.find_one({"user_id": str(admin["_id"])}) if admin else None
+    result["admin_bank_account"] = None if not admin_bank else {
+        "bank_name": admin_bank["bank_name"], "branch": admin_bank["branch"],
+        "account_holder_name": admin_bank["account_holder_name"],
+        "account_number": decrypt_sensitive(admin_bank["account_number_encrypted"]),
+    }
+    return result
 
 
 @router.put("/me/bank-account")
@@ -200,8 +261,8 @@ async def seller_earnings(user=Depends(require_seller)):
     rows = await db.payouts.find({"seller_id": str(seller["_id"])}).sort("created_at", -1).to_list(length=None)
     total_sales = sum((Decimal(p["gross_amount"]) for p in rows), Decimal("0"))
     commission = sum((Decimal(p["commission_amount"]) for p in rows), Decimal("0"))
-    paid = sum((Decimal(p["net_amount"]) for p in rows if p.get("payout_status", p["status"]) == "PAID"), Decimal("0"))
-    pending = sum((Decimal(p["net_amount"]) for p in rows if p.get("payout_status", p["status"]) != "PAID"), Decimal("0"))
+    paid = sum((Decimal(p["net_amount"]) for p in rows if p.get("payout_status", p["status"]).upper() == "PAID"), Decimal("0"))
+    pending = sum((Decimal(p["net_amount"]) for p in rows if p.get("payout_status", p["status"]).upper() in {"PENDING", "PROCESSING", "READY_FOR_MANUAL_TRANSFER"}), Decimal("0"))
     order_ids = list({p["order_id"] for p in rows})
     order_object_ids = [ObjectId(value) for value in order_ids if ObjectId.is_valid(value)]
     delivery_charges = sum((Decimal(str(o.get("delivery_charge", 0))) for o in await db.orders.find(
@@ -213,9 +274,13 @@ async def seller_earnings(user=Depends(require_seller)):
         item["payment_status"] = payout.get("payment_status", "PAID")
         item["payout_status"] = payout.get("payout_status", payout["status"])
         transactions.append(item)
-    return {"total_sales": str(total_sales), "commission": str(commission),
+    net_earnings = total_sales - commission
+    return {"total_sales": str(total_sales), "gross_earnings": str(total_sales),
+            "commission": str(commission), "total_commission": str(commission),
+            "net_earnings": str(net_earnings),
             "completed_payouts": str(paid), "available_balance": str(pending),
             "pending_payouts": str(pending), "delivery_charges_handled": str(delivery_charges),
+            "delivery_fees_handled_by_platform": str(delivery_charges),
             "transactions": transactions}
 
 

@@ -88,6 +88,17 @@
   }
   .searchbar-compact input::placeholder { color: var(--muted); }
   .searchbar-compact input:focus { width: auto; }
+
+  /* The compact control presents focus on the rounded container. Avoid the
+     global gold focus outline being drawn around only the inner text field. */
+  .navbar .searchbar-compact input:focus-visible {
+    outline: none !important;
+    outline-offset: 0 !important;
+  }
+  .navbar.navbar-home .searchbar-compact:focus-within {
+    border-color: rgba(139, 195, 74, 0.8) !important;
+    box-shadow: 0 0 0 3px rgba(139, 195, 74, 0.16);
+  }
   
   @media (max-width: 640px) {
     .searchbar { padding: 4px 4px 4px 14px; }

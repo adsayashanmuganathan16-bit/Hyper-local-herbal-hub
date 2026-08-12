@@ -24,16 +24,6 @@ export default function Reviews({ sellerMode = false }) {
     <div className="page-wrapper">
       <section className="dashboard-page">
         <div className="container">
-          <div className="dashboard-header">
-            <div className="dashboard-header-copy">
-              <span className="dashboard-eyebrow">{sellerMode ? 'Product feedback' : 'Marketplace feedback'}</span>
-              <h1 className="dashboard-title">Customer Reviews</h1>
-              <p className="dashboard-subtitle">
-                {sellerMode ? 'Ratings and reviews for products supplied by your store.' : 'Customer ratings and reviews across all products.'}
-              </p>
-            </div>
-          </div>
-
           {loading ? <Loading /> : (
             <>
               <div className="review-summary">

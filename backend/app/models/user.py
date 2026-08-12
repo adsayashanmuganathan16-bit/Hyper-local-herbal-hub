@@ -34,6 +34,11 @@ class UserLogin(BaseModel):
     password: str
 
 
+class GoogleLoginRequest(BaseModel):
+    credential: str = Field(..., min_length=100)
+    role: UserRole
+
+
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None

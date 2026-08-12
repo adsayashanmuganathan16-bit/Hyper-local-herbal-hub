@@ -1,12 +1,54 @@
 .shop-header {
+    position: relative;
+    overflow: hidden;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
+    min-height: 140px;
+    padding: 30px;
     margin-bottom: var(--space-3);
     flex-wrap: wrap;
     gap: var(--space-2);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 22px;
+    color: white;
+    background:
+      radial-gradient(circle at 92% 10%,rgba(164,210,127,.2),transparent 25%),
+      linear-gradient(120deg,#0b3d2c 0%,#176044 62%,#397b56 100%);
+    box-shadow: 0 20px 45px rgba(9,45,32,.18), inset 0 1px 0 rgba(255,255,255,.12);
   }
+  .shop-header::after {
+    content: "";
+    position: absolute;
+    width: 190px;
+    height: 190px;
+    top: -112px;
+    right: 12%;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 50%;
+    box-shadow: 0 0 0 30px rgba(255,255,255,.025), 0 0 0 62px rgba(255,255,255,.018);
+    pointer-events: none;
+  }
+  .shop-header > * { position: relative; z-index: 1; }
+  .shop-header .section-title { color: white; }
+  .shop-header .section-title::after { background: linear-gradient(90deg,#e2bd72,#f5dda7); }
+  .shop-header .text-gray { color: rgba(255,255,255,.72); }
   .shop-controls { display: flex; gap: var(--space-1); align-items: center; }
+  .shop-header .shop-controls .btn-secondary {
+    color: white;
+    border-color: rgba(255,255,255,.42);
+    background: rgba(255,255,255,.1);
+    box-shadow: 0 8px 20px rgba(5,32,22,.14);
+    backdrop-filter: blur(8px);
+  }
+  .shop-header .shop-controls .btn-secondary:hover { border-color:white; background:rgba(255,255,255,.18); }
+  .shop-header .shop-controls .form-select {
+    min-width: 185px;
+    color: var(--brand-950);
+    border-color: rgba(255,255,255,.7);
+    background-color: rgba(255,255,255,.96);
+    box-shadow: 0 8px 20px rgba(5,32,22,.14);
+  }
   .filter-panel {
     background: var(--surface);
     border: 1px solid var(--line);
@@ -56,6 +98,7 @@
   .checkbox-wrap input { width: 18px; height: 18px; accent-color: var(--green-700); }
   
   @media (max-width: 768px) {
+    .shop-header { min-height: 0; padding: 24px 20px; }
     .filter-grid { grid-template-columns: repeat(2, 1fr); }
     .shop-controls { width: 100%; }
     .shop-controls select { flex: 1; }

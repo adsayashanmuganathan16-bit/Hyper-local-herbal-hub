@@ -1,5 +1,6 @@
 from decimal import Decimal
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -42,6 +43,10 @@ class CommissionUpdate(BaseModel):
 
 class ManualPayoutCompletion(BaseModel):
     transaction_reference: str = Field(min_length=3, max_length=150)
+
+
+class PayoutStatusUpdate(BaseModel):
+    status: Literal["processing", "paid"]
 
 
 class FinancialOrderCreate(BaseModel):

@@ -126,7 +126,6 @@ Narrative values must be plain text, 2-4 sentences, with no Markdown.
     request_body = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 0.2,
             "responseMimeType": "application/json",
             "responseSchema": RESPONSE_SCHEMA,
         },
@@ -146,6 +145,22 @@ Narrative values must be plain text, 2-4 sentences, with no Markdown.
         raise
     except httpx.TimeoutException as exc:
         raise GeminiEnrichmentError("Gemini timed out.") from exc
+    except httpx.HTTPStatusError as exc:
+        try:
+            api_message = exc.response.json().get("error", {}).get("message", "")
+        except (TypeError, ValueError):
+            api_message = ""
+        logger.error(
+            "Gemini API request failed (model=%s, status=%s): %s",
+            settings.GEMINI_MODEL,
+            exc.response.status_code,
+            api_message or exc,
+        )
+        if exc.response.status_code == 404:
+            raise GeminiEnrichmentError(
+                f"The configured Gemini model '{settings.GEMINI_MODEL}' is unavailable."
+            ) from exc
+        raise GeminiEnrichmentError("Gemini is currently unavailable.") from exc
     except (httpx.HTTPError, ValueError) as exc:
         raise GeminiEnrichmentError("Gemini is currently unavailable.") from exc
     finally:

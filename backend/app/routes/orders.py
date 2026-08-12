@@ -468,8 +468,9 @@ async def update_postal_delivery_status(
                 "updated_at": now,
             }},
         )
-        from app.services.financial_order_service import create_payouts_for_paid_order
-        await create_payouts_for_paid_order(db, order_id, now)
+    if data.status == "delivered":
+        from app.services.financial_order_service import finalize_delivered_order_earnings
+        await finalize_delivered_order_earnings(db, order_id, now)
     await notify_postal_status(db, order, order_id, data.status)
     logger.info(
         "Postal status changed for order %s: %s -> %s by %s %s",
@@ -601,8 +602,9 @@ async def update_order_status(
                 "status": "PAID", "transaction_id": f"COD-{order_id}", "paid_at": now, "updated_at": now,
             }})
             await db.financial_orders.update_one({"order_id": order_id}, {"$set": {"payment_status": "PAID", "order_status": "DELIVERED", "updated_at": now}})
-            from app.services.financial_order_service import create_payouts_for_paid_order
-            await create_payouts_for_paid_order(db, order_id, now)
+        if new_status == "delivered":
+            from app.services.financial_order_service import finalize_delivered_order_earnings
+            await finalize_delivered_order_earnings(db, order_id, status_time)
         await db.notifications.insert_one({
             "user_id": order["user_id"],
             "type": "order",

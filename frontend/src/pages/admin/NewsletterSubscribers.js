@@ -24,14 +24,6 @@ export default function NewsletterSubscribers() {
     <div className="page-wrapper">
       <section className="dashboard-page">
         <div className="container">
-          <div className="dashboard-header">
-            <div className="dashboard-header-copy">
-              <span className="dashboard-eyebrow">Newsletter audience</span>
-              <h1 className="dashboard-title">Email Subscribers</h1>
-              <p className="dashboard-subtitle">People who subscribed through the Herbal Hub website footer.</p>
-            </div>
-          </div>
-
           <div className="admin-card">
             <div className="subscriber-toolbar">
               <div>

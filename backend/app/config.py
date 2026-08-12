@@ -45,6 +45,7 @@ class Settings:
     JWT_REFRESH_EXPIRE_DAYS = _integer("JWT_REFRESH_EXPIRE_DAYS", 7)
     RESET_TOKEN_EXPIRE_MINUTES = _integer("RESET_TOKEN_EXPIRE_MINUTES", 30)
     EMAIL_VERIFICATION_EXPIRE_HOURS = _integer("EMAIL_VERIFICATION_EXPIRE_HOURS", 24)
+    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
@@ -90,11 +91,11 @@ class Settings:
     PLANTNET_MIN_CONFIDENCE = _number("PLANTNET_MIN_CONFIDENCE", 0.20)
 
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
     GEMINI_API_BASE_URL = os.getenv(
         "GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com/v1beta"
     )
-    GEMINI_TIMEOUT_SECONDS = _number("GEMINI_TIMEOUT_SECONDS", 30)
+    GEMINI_TIMEOUT_SECONDS = _number("GEMINI_TIMEOUT_SECONDS", 60)
 
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     DATA_ENCRYPTION_KEY = os.getenv("DATA_ENCRYPTION_KEY", "")

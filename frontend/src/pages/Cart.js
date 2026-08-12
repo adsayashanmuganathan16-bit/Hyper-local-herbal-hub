@@ -33,7 +33,7 @@ export default function Cart() {
       <section className="section" style={{ paddingTop: '40px' }}>
         <div className="container">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="section-title" style={{ marginBottom: 0 }}>Shopping Cart ({totalItems} items)</h1>
+            <strong className="customer-item-count">{totalItems} item{totalItems === 1 ? '' : 's'}</strong>
             <button className="btn-ghost text-sm" style={{ color: 'var(--red-500)' }} onClick={clearCart}>
               <FiTrash2 size={14} /> Clear Cart
             </button>

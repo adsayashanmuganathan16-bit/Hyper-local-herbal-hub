@@ -33,6 +33,7 @@ frontend/.env
 
 # Runtime uploads
 backend/uploads/
+backend/profile-images/
 
 # Build
 dist/

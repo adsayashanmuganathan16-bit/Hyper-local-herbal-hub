@@ -4,6 +4,7 @@ from app.config import settings
 from app.services.financial_crypto import decrypt_sensitive, encrypt_sensitive
 from app.services.onepay_service import OnePayGateway
 from app.services.payhere_service import PayHereGateway
+from app.routes.auth import bank_account_view
 
 
 def test_sensitive_values_are_encrypted(monkeypatch):
@@ -18,6 +19,20 @@ def test_placeholder_encryption_key_uses_local_fallback(monkeypatch):
     encrypted = encrypt_sensitive("1234567890")
     assert encrypted != "1234567890"
     assert decrypt_sensitive(encrypted) == "1234567890"
+
+
+def test_customer_bank_account_view_never_exposes_full_number(monkeypatch):
+    monkeypatch.setattr(settings, "DATA_ENCRYPTION_KEY", "")
+    encrypted = encrypt_sensitive("1234567890")
+    view = bank_account_view({
+        "bank_name": "Test Bank",
+        "branch": "Main",
+        "account_holder_name": "Customer",
+        "account_number_encrypted": encrypted,
+        "account_number_last4": "7890",
+    })
+    assert view["account_number"] == "****7890"
+    assert "1234567890" not in str(view)
 
 
 def test_invalid_encryption_key_has_actionable_error(monkeypatch):

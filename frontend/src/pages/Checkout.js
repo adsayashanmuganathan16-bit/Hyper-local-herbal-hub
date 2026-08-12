@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiCreditCard, FiTruck, FiDollarSign } from 'react-icons/fi';
+import { FiCreditCard, FiDollarSign, FiTruck } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { orderApi } from '../api/orderApi';
 import { formatCurrency } from '../utils/helpers';
@@ -21,12 +21,13 @@ export default function Checkout() {
     name: user?.name || '', phone: user?.phone || '', address_line1: user?.address?.address_line1 || '',
     address_line2: user?.address?.address_line2 || '', city: user?.address?.city || '',
     state: user?.address?.state || '', pincode: user?.address?.pincode || '',
-    street: '', area: '', landmark: '', delivery_note: '', payment_method: '', prescription_id: '',
+    street: '', area: '', landmark: '', delivery_note: '', prescription_id: '',
   });
   const [approvedPrescriptions, setApprovedPrescriptions] = useState([]);
   const [serviceability, setServiceability] = useState(null);
   const [mapCenter, setMapCenter] = useState(null);
   const [pin, setPin] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('stripe');
 
   useEffect(() => { serviceAreaApi.active().then(({data}) => setMapCenter({lat:data.center_latitude,lng:data.center_longitude})).catch(()=>{}); }, []);
 
@@ -68,7 +69,6 @@ export default function Checkout() {
     if (hasPrescriptionItems && !form.prescription_id) {
       return toast.error('Please select an approved prescription');
     }
-    if (!form.payment_method) return toast.error('Please select a payment method');
     if (!pin || !serviceability?.ok) return toast.error('Select a delivery pin inside the available service area');
     if (shippingFee == null) return toast.error('Sri Lanka Post supports parcels up to 2 kg. Please reduce your cart weight.');
 
@@ -93,7 +93,7 @@ export default function Checkout() {
         customer_longitude: pin.lng,
         landmark: form.landmark.trim() || null,
         delivery_note: form.delivery_note.trim() || null,
-        payment_method: form.payment_method,
+        payment_method: paymentMethod,
         prescription_id: form.prescription_id || null,
       };
       const { data } = await orderApi.createOrder(orderData);
@@ -104,7 +104,7 @@ export default function Checkout() {
           : 'Redirecting to the payment gateway…');
         window.location.assign(data.payment_request.checkout_url);
       } else {
-        toast.success('Order placed successfully!');
+        toast.success(paymentMethod === 'cod' ? 'Cash on Delivery order placed successfully!' : 'Order placed successfully!');
         await fetchCart();
         navigate(`/orders/${data.order_id}`);
       }
@@ -126,8 +126,6 @@ export default function Checkout() {
             <i />
             <span><b>3</b><small>Confirmation</small></span>
           </nav>
-          <h1 className="section-title mb-6">Checkout</h1>
-
           <form onSubmit={handleSubmit}>
             <div className="checkout-layout">
               <div className="checkout-form-col">
@@ -187,20 +185,24 @@ export default function Checkout() {
                 <div className="checkout-section">
                   <h3 className="checkout-section-title"><FiCreditCard size={18} /> Payment Method</h3>
                   <div className="payment-options">
-                    {[
-                      { value: 'cod', label: 'Cash on Delivery', desc: 'Pay when your order arrives' },
-                      { value: 'stripe', label: 'Card Payment', desc: 'Secure payment powered by Stripe' },
-                    ].map((opt) => (
-                      <label key={opt.value} className={`payment-option ${form.payment_method === opt.value ? 'selected' : ''}`}>
-                        <input type="radio" name="payment_method" value={opt.value} checked={form.payment_method === opt.value} onChange={handleChange} />
-                        <div>
-                          <span className="font-semibold">{opt.label}</span>
-                          <span className="text-gray text-xs">{opt.desc}</span>
-                        </div>
-                      </label>
-                    ))}
+                    <button type="button" className={`payment-option${paymentMethod === 'stripe' ? ' selected' : ''}`} onClick={() => setPaymentMethod('stripe')} aria-pressed={paymentMethod === 'stripe'}>
+                      <FiCreditCard size={20} />
+                      <div>
+                        <span className="font-semibold">Stripe</span>
+                        <span className="text-gray text-xs">Secure card payment powered by Stripe</span>
+                      </div>
+                      <i className="payment-check" aria-hidden="true" />
+                    </button>
+                    <button type="button" className={`payment-option${paymentMethod === 'cod' ? ' selected' : ''}`} onClick={() => setPaymentMethod('cod')} aria-pressed={paymentMethod === 'cod'}>
+                      <FiDollarSign size={20} />
+                      <div>
+                        <span className="font-semibold">Cash on Delivery</span>
+                        <span className="text-gray text-xs">Pay the full amount when your parcel is delivered</span>
+                      </div>
+                      <i className="payment-check" aria-hidden="true" />
+                    </button>
                   </div>
-                  <p className="text-gray text-xs mt-2">{form.payment_method === 'cod' ? 'Payment remains pending until the courier delivers the order and collects cash.' : 'You will continue to Stripe Checkout to pay securely.'}</p>
+                  <p className="text-gray text-xs mt-2">{paymentMethod === 'stripe' ? 'You will continue to Stripe Checkout to pay securely.' : 'Please keep the exact amount ready. Payment is recorded after delivery.'}</p>
                 </div>
               </div>
 
@@ -235,7 +237,7 @@ export default function Checkout() {
                   </div>
                   <p className="checkout-postal-note">Sri Lanka Post weight-based shipping</p>
                   <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', marginTop: 20 }} disabled={loading || shippingFee == null || !serviceability?.ok || (hasPrescriptionItems && !approvedPrescriptions.length)}>
-                    {loading ? <Loading text="Placing Order..." /> : `Place Order • ${formatCurrency(finalAmount)}`}
+                    {loading ? <Loading text="Placing Order..." /> : `${paymentMethod === 'cod' ? 'Place COD Order' : 'Pay with Stripe'} • ${formatCurrency(finalAmount)}`}
                   </button>
                 </div>
               </div>

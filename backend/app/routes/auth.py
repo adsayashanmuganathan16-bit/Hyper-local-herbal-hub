@@ -1,5 +1,6 @@
 from app.utils.time import utc_now
 from datetime import datetime, timedelta, timezone
+import logging
 
 from bson import ObjectId
 
@@ -24,7 +25,8 @@ from app.models.user import (
     ResetPasswordRequest,
     ChangePasswordRequest,
     VerifyEmailRequest,
-    RefreshTokenRequest
+    RefreshTokenRequest,
+    GoogleLoginRequest,
 )
 
 from app.utils.helpers import (
@@ -50,13 +52,30 @@ from app.services.profile_image_service import (
     is_decodable_image,
     save_profile_image,
 )
+from app.financial.schemas import BankAccountUpdate
+from app.services.financial_crypto import decrypt_sensitive, encrypt_sensitive
 
 
 router = APIRouter(
     prefix="/api/auth",
     tags=["Authentication"]
 )
+logger = logging.getLogger(__name__)
 PUBLIC_REGISTRATION_ROLES = {"customer", "seller"}
+
+
+def google_verification_error_detail(error: Exception) -> str:
+    """Turn Google's token errors into safe, actionable client messages."""
+    message = str(error).lower()
+    if "audience" in message:
+        return "Google client ID mismatch. Restart both apps and verify their Google client IDs match."
+    if "expired" in message:
+        return "The Google sign-in response expired. Please try signing in again."
+    if "too early" in message or "clock" in message:
+        return "Google sign-in failed because the server clock is incorrect."
+    if "issuer" in message:
+        return "Google returned a token from an unexpected issuer. Please try again."
+    return "Google sign-in could not be verified. Please try again."
 
 
 def serialize_user(user: dict) -> dict:
@@ -67,6 +86,178 @@ def serialize_user(user: dict) -> dict:
             serialized["profile_image"]
         )
     return serialized
+
+
+def authentication_response(user: dict, *, onboarding_required: bool = False) -> dict:
+    """Return the application's access tokens and safe user profile."""
+    user_id = str(user["_id"])
+    role = user["role"]
+    profile = serialize_user(user)
+    profile.pop("password", None)
+    profile.pop("verification_token", None)
+    profile.pop("verification_token_expires", None)
+    profile["id"] = user_id
+    profile["onboarding_required"] = onboarding_required
+    return {
+        "access_token": create_access_token({"sub": user_id, "role": role}),
+        "refresh_token": create_refresh_token({"sub": user_id, "role": role}),
+        "token_type": "bearer",
+        "user": profile,
+    }
+
+
+def bank_account_view(bank: dict | None, reveal: bool = False) -> dict | None:
+    if not bank:
+        return None
+    return {
+        "bank_name": bank["bank_name"],
+        "branch": bank["branch"],
+        "account_holder_name": bank["account_holder_name"],
+        "account_number": decrypt_sensitive(bank["account_number_encrypted"])
+        if reveal else f"****{bank['account_number_last4']}",
+    }
+
+
+@router.get("/profile/bank-account")
+async def get_user_bank_account(current_user=Depends(get_current_user)):
+    if current_user.get("role") not in {"customer", "admin"}:
+        raise HTTPException(403, "Use seller payment settings for seller bank details")
+    bank = await get_db().user_bank_accounts.find_one({"user_id": current_user["_id"]})
+    return {"bank_account": bank_account_view(bank)}
+
+
+@router.put("/profile/bank-account")
+async def update_user_bank_account(data: BankAccountUpdate, current_user=Depends(get_current_user)):
+    if current_user.get("role") not in {"customer", "admin"}:
+        raise HTTPException(403, "Use seller payment settings for seller bank details")
+    now = utc_now()
+    bank = {
+        "user_id": current_user["_id"], "bank_name": data.bank_name, "branch": data.branch,
+        "account_holder_name": data.account_holder_name,
+        "account_number_encrypted": encrypt_sensitive(data.account_number),
+        "account_number_last4": data.account_number[-4:], "updated_at": now,
+    }
+    await get_db().user_bank_accounts.update_one(
+        {"user_id": current_user["_id"]},
+        {"$set": bank, "$setOnInsert": {"created_at": now}}, upsert=True,
+    )
+    return {"message": "Bank account saved securely", "bank_account": bank_account_view(bank)}
+
+
+async def seller_onboarding_required(db, user: dict) -> bool:
+    """A seller cannot use seller tools until the required business profile exists."""
+    if user.get("role") != "seller":
+        return False
+    seller = await db.sellers.find_one({"user_id": str(user["_id"])})
+    return not bool(
+        seller
+        and seller.get("business_name")
+        and seller.get("phone")
+        and seller.get("address")
+        and seller.get("nic_encrypted")
+    )
+
+
+@router.post("/google")
+async def google_login(payload: GoogleLoginRequest):
+    """Verify a Google ID token and sign in or create a public-role account.
+
+    Admin Google sign-in is limited to an existing admin email; it can never
+    create or promote an account.
+    """
+    if payload.role.value not in {*PUBLIC_REGISTRATION_ROLES, "admin"}:
+        raise HTTPException(status_code=403, detail="This role cannot use Google sign-in")
+    if not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured")
+
+    try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token
+        from starlette.concurrency import run_in_threadpool
+
+        google_identity = await run_in_threadpool(
+            id_token.verify_oauth2_token,
+            payload.credential,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+        )
+    except ImportError as exc:
+        logger.exception("Google sign-in dependency is unavailable")
+        raise HTTPException(status_code=503, detail="Google sign-in is unavailable on the server") from exc
+    except ValueError as exc:
+        logger.warning("Google ID token verification failed: %s", exc)
+        raise HTTPException(
+            status_code=401,
+            detail=google_verification_error_detail(exc),
+        ) from exc
+    except Exception as exc:
+        # Certificate retrieval and other transport failures should not be
+        # presented as an invalid account or credential.
+        logger.exception("Google ID token verification service failed")
+        raise HTTPException(
+            status_code=503,
+            detail="Could not contact Google to verify sign-in. Please try again shortly.",
+        ) from exc
+
+    google_sub = str(google_identity.get("sub", "")).strip()
+    email = str(google_identity.get("email", "")).strip().lower()
+    if not google_sub or not email or not google_identity.get("email_verified"):
+        raise HTTPException(status_code=401, detail="Google did not provide a verified email address")
+
+    db = get_db()
+    user = await db.users.find_one({"$or": [{"google_sub": google_sub}, {"email": email}]})
+    if user:
+        if user.get("role") != payload.role.value:
+            raise HTTPException(
+                status_code=409,
+                detail=f"This account is registered as {user.get('role', 'another role')}. Choose that role to continue.",
+            )
+        if not user.get("is_active", True):
+            raise HTTPException(status_code=403, detail="Account is deactivated")
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"google_sub": google_sub, "email_verified": True, "updated_at": utc_now()}},
+        )
+        user.update({"google_sub": google_sub, "email_verified": True})
+    else:
+        if payload.role.value == "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="This Google account is not registered as an administrator",
+            )
+        now = utc_now()
+        user = {
+            "name": str(google_identity.get("name") or email.split("@", 1)[0]).strip(),
+            "email": email,
+            "password": None,
+            "role": payload.role.value,
+            "google_sub": google_sub,
+            "profile_image": google_identity.get("picture"),
+            "address": None,
+            "is_active": True,
+            "email_verified": True,
+            "created_at": now,
+            "updated_at": now,
+        }
+        result = await db.users.insert_one(user)
+        user["_id"] = result.inserted_id
+        if payload.role.value == "seller":
+            await db.sellers.insert_one({
+                "user_id": str(result.inserted_id),
+                "name": user["name"],
+                "email": email,
+                "phone": "",
+                "business_name": "",
+                "store_name": "",
+                "address": None,
+                "approval_status": "PENDING",
+                "verification_status": "PENDING",
+                "created_at": now,
+                "updated_at": now,
+            })
+
+    onboarding_required = await seller_onboarding_required(db, user)
+    return authentication_response(user, onboarding_required=onboarding_required)
 
 
 # =========================
@@ -274,6 +465,7 @@ async def login(
 
 
     seller_profile = await db.sellers.find_one({"user_id": str(user["_id"])}) if user.get("role") == "seller" else None
+    onboarding_required = await seller_onboarding_required(db, user)
     return {
 
         "message": "Login successful",
@@ -299,7 +491,9 @@ async def login(
             "business_name": user.get("business_name"),
             "store_name": user.get("store_name") or (seller_profile or {}).get("store_name") or (seller_profile or {}).get("business_name"),
 
-            "email_verified": user.get("email_verified", False)
+            "email_verified": user.get("email_verified", False),
+
+            "onboarding_required": onboarding_required
 
         }
 
@@ -317,9 +511,11 @@ async def get_profile(
 ):
 
     if current_user.get("role") == "seller":
-        seller = await get_db().sellers.find_one({"user_id": current_user["_id"]})
+        db = get_db()
+        seller = await db.sellers.find_one({"user_id": current_user["_id"]})
         current_user["store_name"] = current_user.get("store_name") or (seller or {}).get("store_name") or (seller or {}).get("business_name")
         current_user["business_name"] = current_user.get("business_name") or (seller or {}).get("business_name")
+        current_user["onboarding_required"] = await seller_onboarding_required(db, current_user)
     return {"user": serialize_user(current_user)}
 
 

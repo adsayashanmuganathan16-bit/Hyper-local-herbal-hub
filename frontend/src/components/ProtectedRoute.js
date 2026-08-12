@@ -4,13 +4,16 @@ import { useAuth } from '../context/AuthContext';
 import Loading from './Loading';
 
 export default function ProtectedRoute({ children, adminOnly, sellerOnly, customerOnly, deliveryStaffOnly }) {
-  const { isAuthenticated, isAdmin, isSeller, isCustomer, isDeliveryStaff, loading } = useAuth();
+  const { user, isAuthenticated, isAdmin, isSeller, isCustomer, isDeliveryStaff, loading } = useAuth();
   const location = useLocation();
 
   if (loading) return <Loading />;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
   if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
   if (sellerOnly && !isSeller) return <Navigate to="/" replace />;
+  if (sellerOnly && user?.onboarding_required && location.pathname !== '/seller/payment-setup') {
+    return <Navigate to="/seller/payment-setup" replace state={{ onboarding: true }} />;
+  }
   if (customerOnly && !isCustomer) return <Navigate to="/" replace />;
   if (deliveryStaffOnly && !isDeliveryStaff) return <Navigate to="/" replace />;
 

@@ -92,7 +92,6 @@ function DetailsModal({ order, onClose }) {
   const activeRank = STATUS_RANK[deliveryStatus] ?? STATUS_RANK[order.status] ?? 0;
   const stopped = ['cancelled', 'failed', 'returned'].includes(String(order.status).toLowerCase())
     || order.payment_status === 'failed';
-  const transactionId = order.payment?.stripe_payment_intent_id || order.payment?.transaction_id || order.payment_id;
   return (
     <Modal title={`Order #${order.id.slice(0, 8).toUpperCase()}`} onClose={onClose} wide>
       <div className="seller-order-modal-body">
@@ -111,7 +110,6 @@ function DetailsModal({ order, onClose }) {
               <div><dt>Method</dt><dd>{order.payment_method === 'stripe' ? 'Stripe' : order.payment_method === 'cod' ? 'Cash on Delivery' : formatStatus(order.payment_method)}</dd></div>
               <div><dt>Status</dt><dd><StatusBadge value={order.payment_status} type="payment" /></dd></div>
               <div><dt>Seller total</dt><dd>{formatCurrency(sellerTotal(order))}</dd></div>
-              {order.payment_method === 'stripe' && <div><dt>Stripe transaction</dt><dd className="transaction-id">{transactionId || 'Awaiting payment'}</dd></div>}
               {order.payment?.paid_at && <div><dt>Paid at</dt><dd>{formatDateTime(order.payment.paid_at)}</dd></div>}
             </dl>
           </article>
@@ -208,10 +206,7 @@ export default function SellerOrders() {
   if (loading) return <Loading />;
   return (
     <div className="page-wrapper"><section className="dashboard-page seller-orders-page"><div className="container">
-      <div className="dashboard-header">
-        <div className="dashboard-header-copy"><span className="dashboard-eyebrow">Order fulfilment</span><h1 className="dashboard-title">Manage Orders</h1><p className="dashboard-subtitle">Review purchases, manage shipping, and keep customers informed.</p></div>
-        <div className="seller-order-summary"><div><b>{counts.total}</b><span>Total orders</span></div><div><b>{counts.action}</b><span>Need attention</span></div><div><b>{counts.shipped}</b><span>In delivery</span></div></div>
-      </div>
+      <div className="seller-order-summary seller-order-summary-standalone"><div><b>{counts.total}</b><span>Total orders</span></div><div><b>{counts.action}</b><span>Need attention</span></div><div><b>{counts.shipped}</b><span>In delivery</span></div></div>
 
       <div className="seller-order-grid">
         {orders.map((order) => {

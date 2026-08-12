@@ -67,6 +67,8 @@ async def update_delivery_status(
         # Notify user
         order = await db.orders.find_one({"_id": delivery["order_id"]})
         if order:
+            from app.services.financial_order_service import finalize_delivered_order_earnings
+            await finalize_delivered_order_earnings(db, str(delivery["order_id"]), utc_now())
             await db.notifications.insert_one({
                 "user_id": order["user_id"],
                 "type": "delivery",

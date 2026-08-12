@@ -32,7 +32,7 @@ async def search_medicines(
     max_price: Optional[float] = Query(None, ge=0),
     available_only: bool = Query(False),
     requires_prescription: Optional[bool] = Query(None),
-    sort_by: str = Query("relevance", regex="^(relevance|price_low|price_high|rating|newest)$"),
+    sort_by: str = Query("relevance", pattern="^(relevance|price_low|price_high|rating|newest)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(12, ge=1, le=50),
 ):

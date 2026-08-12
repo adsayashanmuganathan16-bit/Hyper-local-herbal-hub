@@ -18,3 +18,4 @@ celery[redis]==5.4.0
 redis==5.0.7
 cryptography==42.0.8
 pytest==8.2.2
+google-auth==2.40.3

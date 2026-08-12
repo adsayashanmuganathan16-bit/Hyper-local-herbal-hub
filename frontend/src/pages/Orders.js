@@ -45,7 +45,6 @@ export default function Orders() {
     <div className="page-wrapper">
       <section className="section" style={{ paddingTop: '40px' }}>
         <div className="container-sm">
-          <h1 className="section-title mb-6">My Orders</h1>
           <div className="tab-nav">
             {STATUS_FILTERS.map((f) => (
               <button key={f.value} className={`tab-btn ${activeStatus === f.value ? 'active' : ''}`} onClick={() => setActiveStatus(f.value)}>

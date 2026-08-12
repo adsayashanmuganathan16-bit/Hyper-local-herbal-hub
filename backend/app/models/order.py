@@ -60,6 +60,13 @@ class OrderCreate(BaseModel):
     landmark: Optional[str] = Field(default=None, max_length=250)
     delivery_note: Optional[str] = Field(default=None, max_length=500)
 
+    @field_validator("payment_method")
+    @classmethod
+    def validate_checkout_payment(cls, value: PaymentMethodEnum):
+        if value not in {PaymentMethodEnum.STRIPE, PaymentMethodEnum.COD}:
+            raise ValueError("Choose Stripe or Cash on Delivery")
+        return value
+
     @field_validator("address")
     @classmethod
     def validate_delivery_address(cls, value: dict):

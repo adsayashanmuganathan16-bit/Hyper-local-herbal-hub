@@ -120,7 +120,7 @@ async def seed():
 
         users = {}
         specs = [
-            ("admin", "Herbal Hub Admin", "admin@herbalhub.in", "+94770000001", "admin123", "admin"),
+            ("admin", "Adsaya Shanmuganathan", "adsayashanmuganathan16@gmail.com", "+94770000001", "Adsaya#16", "admin"),
             ("customer", "Nimali Perera", "demo@herbalhub.in", "+94770000002", "demo123", "customer"),
             ("seller1", "Kasun Ayurveda", "seller@herbalhub.in", "+94770000003", "seller123", "seller"),
             ("seller2", "Amaya Naturals", "seller2@herbalhub.in", "+94770000004", "seller123", "seller"),
@@ -358,7 +358,7 @@ async def seed():
 
         print("\nHerbal Hub demo database seeded successfully.")
         print("Demo logins:")
-        print("  Admin:    admin@herbalhub.in / admin123")
+        print("  Admin:    adsayashanmuganathan16@gmail.com / Adsaya#16")
         print("  Customer: demo@herbalhub.in / demo123")
         print("  Seller:   seller@herbalhub.in / seller123")
         print("  Seller 2: seller2@herbalhub.in / seller123")

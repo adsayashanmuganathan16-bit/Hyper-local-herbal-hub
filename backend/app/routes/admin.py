@@ -76,7 +76,9 @@ async def get_all_users(
 ):
     """Get all users with filters (admin only)."""
     db = get_db()
-    query = {}
+    # Removed accounts stay out of the active administration list. Their order
+    # and payment records remain available for audit/accounting purposes.
+    query = {"removed_at": {"$exists": False}}
     if role:
         query["role"] = role
     if search:
@@ -89,7 +91,25 @@ async def get_all_users(
     cursor = db.users.find(query).sort([("created_at", -1)])
     users = await cursor.to_list(length=None)
     result = paginate(users, page, page_size)
-    result["items"] = [serialize_doc(u) for u in result["items"]]
+    from app.services.financial_crypto import decrypt_sensitive
+    visible_items = []
+    for row in result["items"]:
+        item = serialize_doc(row)
+        user_id = str(row["_id"])
+        if row.get("role") == "seller":
+            seller = await db.sellers.find_one({"user_id": user_id}, {"_id": 1})
+            bank = await db.seller_bank_accounts.find_one(
+                {"seller_id": str(seller["_id"])}
+            ) if seller else None
+        else:
+            bank = await db.user_bank_accounts.find_one({"user_id": user_id})
+        item["bank_account"] = None if not bank else {
+            "bank_name": bank["bank_name"], "branch": bank["branch"],
+            "account_holder_name": bank["account_holder_name"],
+            "account_number": decrypt_sensitive(bank["account_number_encrypted"]),
+        }
+        visible_items.append(item)
+    result["items"] = visible_items
     return result
 
 
@@ -124,9 +144,16 @@ async def remove_user(user_id: str, current_user: dict = Depends(require_admin))
     if user.get("role") == "admin" or str(user["_id"]) == current_user["_id"]:
         raise HTTPException(403, "Admin accounts cannot be removed here")
     now = utc_now()
-    await db.users.update_one({"_id": user["_id"]}, {"$set": {
-        "is_active": False, "removed_at": now, "removed_by": current_user["_id"], "updated_at": now,
-    }})
+    # Preserve the user id for historical orders while releasing their email
+    # and phone so the person can register again with a different role.
+    removed_email = f"removed+{user['_id']}@deleted.herbalhub.invalid"
+    await db.users.update_one({"_id": user["_id"]}, {
+        "$set": {"email": removed_email, "is_active": False, "removed_at": now,
+                 "removed_by": current_user["_id"], "updated_at": now},
+        "$unset": {"phone": "", "google_sub": ""},
+    })
+    # Bank details are not accounting records and should not survive account removal.
+    await db.user_bank_accounts.delete_one({"user_id": user_id})
     if user.get("role") == "seller":
         await db.sellers.update_one({"user_id": user_id}, {"$set": {"approval_status": "REJECTED", "updated_at": now}})
-    return {"message": "User removed successfully"}
+    return {"message": "User deleted successfully"}

@@ -12,7 +12,9 @@ def payout_amounts(allocation: dict) -> tuple[Decimal, Decimal, Decimal, Decimal
     """Return merchandise, delivery, gross, commission, and net amounts."""
     merchandise = money(allocation.get("merchandise_amount", allocation["gross_amount"]))
     delivery = money(allocation.get("delivery_amount", "0"))
-    gross = money(merchandise + delivery)
+    # Delivery is collected and handled by the platform. It is retained as a
+    # reporting field, but must never inflate seller earnings or commission.
+    gross = merchandise
     rate = Decimal(str(allocation["commission_rate"]))
     commission, net = calculate_commission(gross, rate)
     return merchandise, delivery, gross, commission, net
@@ -43,8 +45,8 @@ async def create_financial_order(
     if missing := set(user_ids).difference(by_user):
         raise ValueError("Every product seller must have an approved financial profile")
 
-    # Commission applies to merchandise only. Delivery fees are passed through
-    # to the seller responsible for dispatch and are not commissionable.
+    # Delivery fees are handled by the platform and remain separate from the
+    # immutable seller merchandise allocation.
     allocated = {user_id: money(value) for user_id, value in seller_gross_by_user_id.items()}
     delivery_allocated = {
         user_id: money(value)
@@ -70,8 +72,8 @@ async def create_financial_order(
     allocations = []
     for user_id, merchandise_gross in allocated.items():
         delivery_amount = delivery_allocated.get(user_id, Decimal("0"))
-        gross = money(merchandise_gross + delivery_amount)
-        commission, net = calculate_commission(gross, rate)
+        gross = merchandise_gross
+        commission, net = calculate_commission(merchandise_gross, rate)
         allocations.append({
             "order_id": order_id, "seller_id": str(by_user[user_id]["_id"]), "seller_user_id": user_id,
             "merchandise_amount": str(merchandise_gross), "gross_amount": str(gross),
@@ -102,11 +104,26 @@ async def create_payouts_for_paid_order(
     now=None,
     payment_reference: str | None = None,
 ) -> list[dict]:
-    """Upsert one payout per verified seller allocation; safe to call repeatedly."""
+    """Finalize one earning per seller after payment and delivery.
+
+    The compound unique index on (order_id, seller_id), together with the
+    upsert filter below, makes repeated callbacks idempotent.
+    """
     now = now or utc_now()
     payment = await db.payments.find_one({"order_id": order_id, "status": "PAID"})
     if not payment:
         raise ValueError("Payouts can only be created for a PAID payment")
+    order_query = {"_id": ObjectId(order_id)} if ObjectId.is_valid(order_id) else {"_id": order_id}
+    order = await db.orders.find_one(order_query)
+    if not order or (
+        str(order.get("status", "")).lower() != "delivered"
+        and str(order.get("delivery_status", "")).lower() != "delivered"
+    ):
+        return []
+    await db.financial_orders.update_one(
+        {"order_id": order_id},
+        {"$set": {"order_status": "DELIVERED", "updated_at": now}},
+    )
     stored_reference = payment.get("transaction_id")
     if payment_reference and stored_reference and payment_reference != stored_reference:
         raise ValueError("Payment reference does not match the paid order")
@@ -169,3 +186,37 @@ async def create_payouts_for_paid_order(
             "net_amount": str(net),
         })
     return eligible_allocations
+
+
+async def finalize_delivered_order_earnings(db, order_id: str, now=None) -> list[dict]:
+    """Finalize earnings when delivery wins the race with payment callbacks."""
+    now = now or utc_now()
+    payment = await db.payments.find_one({"order_id": order_id, "status": "PAID"})
+    if not payment:
+        order_query = {"_id": ObjectId(order_id)} if ObjectId.is_valid(order_id) else {"_id": order_id}
+        order = await db.orders.find_one(order_query)
+        if not order or str(order.get("payment_method", "")).lower() != "cod":
+            return []
+        reference = f"COD-{order_id}"
+        await db.orders.update_one(
+            order_query,
+            {"$set": {"payment_status": "completed", "updated_at": now}},
+        )
+        await db.payments.update_one(
+            {"order_id": order_id, "status": {"$ne": "PAID"}},
+            {"$set": {"status": "PAID", "payment_status": "PAID",
+                      "transaction_id": reference, "paid_at": now, "updated_at": now}},
+        )
+        await db.financial_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {"payment_status": "PAID", "order_status": "DELIVERED", "updated_at": now}},
+        )
+        payment = await db.payments.find_one({"order_id": order_id, "status": "PAID"})
+        if not payment:
+            return []
+    return await create_payouts_for_paid_order(
+        db,
+        order_id,
+        now,
+        payment_reference=payment.get("transaction_id"),
+    )

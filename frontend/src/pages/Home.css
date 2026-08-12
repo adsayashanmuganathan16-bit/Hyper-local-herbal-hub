@@ -118,6 +118,7 @@
 .home-hero-copy h2 em,
 .home-features-heading h2 em {
   color: var(--home-fresh);
+  font-style: normal;
   font-weight: inherit;
 }
 

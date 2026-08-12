@@ -16,10 +16,14 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
+[ -f .env ] || cp .env.example .env
 # Edit .env and set SECRET_KEY plus the integrations you use.
 uvicorn app.main:app --reload
 ```
+
+The guarded copy creates `.env` only once. Do not run
+`cp .env.example .env` after configuring the file because a normal copy
+overwrites the saved values.
 
 The backend intentionally refuses to start without `SECRET_KEY`. It also
 validates credentials for the selected `PAYMENT_PROVIDER`. Keep

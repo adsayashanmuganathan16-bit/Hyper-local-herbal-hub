@@ -1,6 +1,7 @@
 from app.utils.time import utc_now
 import csv
 import io
+import secrets
 from datetime import datetime
 
 from bson import ObjectId
@@ -10,9 +11,10 @@ from fastapi.responses import StreamingResponse, HTMLResponse
 from pymongo import ReturnDocument
 
 from app.database import get_db
-from app.financial.schemas import CommissionUpdate, ManualPayoutCompletion
+from app.financial.schemas import CommissionUpdate, ManualPayoutCompletion, PayoutStatusUpdate
 from app.middleware.auth_middleware import require_admin
 from app.utils.helpers import serialize_doc
+from app.services.financial_crypto import decrypt_sensitive
 
 router = APIRouter(prefix="/api/financial/admin", tags=["Financial Admin"])
 
@@ -44,6 +46,11 @@ async def sellers(_=Depends(require_admin)):
             "verification_status",
             "VERIFIED" if bank and bank.get("verified") else "PENDING",
         )
+        item["bank_account"] = None if not bank else {
+            "bank_name": bank["bank_name"], "branch": bank["branch"],
+            "account_holder_name": bank["account_holder_name"],
+            "account_number": decrypt_sensitive(bank["account_number_encrypted"]),
+        }
         result.append(item)
     return result
 
@@ -123,7 +130,11 @@ async def payments(_=Depends(require_admin)):
 
 @router.get("/payouts")
 async def payouts(status: str | None = None, _=Depends(require_admin)):
-    query = {"status": status.upper()} if status else {}
+    allowed = {"PENDING", "PROCESSING", "PAID", "READY_FOR_MANUAL_TRANSFER", "FAILED"}
+    normalized = status.upper() if status else None
+    if normalized and normalized not in allowed:
+        raise HTTPException(422, "Invalid payout status filter")
+    query = {"status": normalized} if normalized else {}
     db = get_db()
     rows = await db.payouts.find(query).sort("created_at", -1).to_list(length=None)
     seller_ids = [ObjectId(row["seller_id"]) for row in rows if ObjectId.is_valid(row.get("seller_id", ""))]
@@ -149,6 +160,84 @@ async def payouts(status: str | None = None, _=Depends(require_admin)):
         item["payout_status"] = row.get("payout_status", row["status"])
         result.append(item)
     return result
+
+
+@router.get("/payouts/{payout_id}")
+async def payout_detail(payout_id: str, _=Depends(require_admin)):
+    payout = await get_db().payouts.find_one({"_id": oid(payout_id)})
+    if not payout:
+        raise HTTPException(404, "Payout not found")
+    return serialize_doc(payout)
+
+
+async def generated_payout_reference(db) -> str:
+    for _ in range(10):
+        reference = f"PAY-{secrets.token_hex(4).upper()}"
+        if not await db.payouts.find_one({"payout_reference": reference}, {"_id": 1}):
+            return reference
+    raise HTTPException(503, "Unable to generate a unique payout reference")
+
+
+async def transition_payout(db, payout_id: str, target: str, user: dict) -> dict:
+    payout_oid = oid(payout_id)
+    existing = await db.payouts.find_one({"_id": payout_oid})
+    if not existing:
+        raise HTTPException(404, "Payout not found")
+    current = existing.get("payout_status", existing.get("status", "PENDING")).upper()
+    allowed = {
+        "PENDING": {"PROCESSING", "PAID"},
+        "READY_FOR_MANUAL_TRANSFER": {"PROCESSING", "PAID"},
+        "PROCESSING": {"PAID"},
+    }
+    if target not in allowed.get(current, set()):
+        if current == "PAID":
+            raise HTTPException(409, "Payout has already been paid")
+        raise HTTPException(409, f"Cannot change payout from {current} to {target}")
+    now = utc_now()
+    fields = {"status": target, "payout_status": target, "updated_at": now}
+    if target == "PAID":
+        fields.update({
+            "transaction_reference": await generated_payout_reference(db),
+            "paid_at": now,
+            "paid_by": user["_id"],
+        })
+        fields["payout_reference"] = fields["transaction_reference"]
+    payout = await db.payouts.find_one_and_update(
+        {"_id": payout_oid, "status": current},
+        {"$set": fields},
+        return_document=ReturnDocument.AFTER,
+    )
+    if not payout:
+        raise HTTPException(409, "Payout status changed; refresh and try again")
+    return payout
+
+
+@router.patch("/payouts/{payout_id}/status")
+async def update_payout_status(
+    payout_id: str,
+    data: PayoutStatusUpdate,
+    request: Request,
+    user=Depends(require_admin),
+):
+    db, target = get_db(), data.status.upper()
+    payout = await transition_payout(db, payout_id, target, user)
+    await audit(db, user, f"payout.{target.lower()}", "payout", payout_id, request,
+                {"reference": payout.get("transaction_reference")})
+    if target == "PAID":
+        await db.payout_attempts.update_one(
+            {"payout_id": payout_id, "attempt_number": payout.get("retry_count", 0) + 1},
+            {"$setOnInsert": {"provider": "manual_bank_transfer", "status": "PAID",
+                              "request_reference": payout["transaction_reference"],
+                              "failure_reason": None, "created_at": payout["paid_at"]}},
+            upsert=True,
+        )
+        from app.services.financial_notification_service import create_financial_notification
+        await create_financial_notification(
+            payout["seller_user_id"], "Payout completed",
+            f"Your payout of LKR {float(payout['net_amount']):,.2f} was confirmed. "
+            f"Reference: {payout['transaction_reference']}",
+        )
+    return serialize_doc(payout)
 
 
 @router.get("/commission")

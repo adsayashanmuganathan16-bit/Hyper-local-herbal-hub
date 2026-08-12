@@ -79,3 +79,27 @@
   }
   .auth-demo-btn:hover { background: var(--green-800); color: var(--white); }
   .auth-link:hover { text-decoration: underline; }
+  .google-auth-block { margin-top: 22px; }
+  .auth-divider { display:flex; align-items:center; gap:12px; margin:0 0 18px; color:var(--gray-400); font-size:11px; text-transform:uppercase; letter-spacing:.08em; }
+  .auth-divider::before,.auth-divider::after { content:""; height:1px; flex:1; background:var(--gray-200); }
+  .auth-divider span { white-space:nowrap; }
+  .google-role-label { margin-bottom:10px; color:var(--green-900); font-size:12px; font-weight:700; text-align:center; }
+  .google-role-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .google-role-options button { display:flex; min-height:68px; padding:12px; flex-direction:column; align-items:flex-start; justify-content:center; border:1px solid var(--green-200); border-radius:13px; color:var(--gray-600); background:#fff; text-align:left; transition:var(--transition); }
+  .google-role-options button:hover { border-color:var(--green-400); background:var(--green-50); }
+  .google-role-options button.selected { border-color:var(--green-700); color:var(--green-900); background:var(--green-50); box-shadow:0 0 0 3px rgba(40,107,75,.1); }
+  .google-role-options strong { font-size:13px; }
+  .google-role-options small { margin-top:3px; color:var(--gray-500); font-size:10px; }
+  .google-button-wrap { display:flex; min-height:44px; justify-content:center; overflow:hidden; }
+  .google-seller-note { margin:10px 0 0; color:var(--gray-500); font-size:10px; line-height:1.55; text-align:center; }
+  .role-choice-card { max-width: 540px; }
+  .login-role-choices { display:grid; gap:14px; }
+  .login-role-card { display:flex; align-items:center; gap:16px; width:100%; padding:20px; border:1px solid var(--gray-200); border-radius:16px; background:#fff; color:var(--green-900); cursor:pointer; text-align:left; transition:var(--transition); }
+  .login-role-card:hover { border-color:var(--green-600); background:var(--green-50); transform:translateY(-2px); box-shadow:var(--shadow-md); }
+  .login-role-card > span { display:grid; width:48px; height:48px; flex:0 0 auto; border-radius:14px; place-items:center; background:var(--green-100); color:var(--green-800); font-size:22px; }
+  .login-role-card strong,.login-role-card small { display:block; }
+  .login-role-card strong { margin-bottom:4px; font-size:17px; }
+  .login-role-card small { color:var(--gray-500); font-size:12px; }
+  .staff-login-link { display:block; margin:20px auto 0; border:0; background:transparent; color:var(--gray-500); cursor:pointer; font-size:12px; text-decoration:underline; }
+  .auth-back-button { display:flex; align-items:center; gap:6px; margin:0 auto 18px; border:0; background:transparent; color:var(--green-700); cursor:pointer; font-size:12px; font-weight:600; }
+  .password-input { padding-right:44px; }

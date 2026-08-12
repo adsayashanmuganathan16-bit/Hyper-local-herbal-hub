@@ -42,22 +42,10 @@ export default function PrivacyPolicy() {
         <div className="container support-hero-inner">
           <span className="support-eyebrow">Your information matters</span>
           <h1>Privacy Policy</h1>
-          <p>
-            This policy explains how Hyper-Local Herbal Hub collects, uses, and protects
-            personal information when customers and sellers use our marketplace.
-          </p>
         </div>
       </header>
 
       <main className="container policy-content">
-        <div className="policy-intro">
-          <p>
-            We are committed to handling your personal information responsibly and
-            transparently. By using the platform, you acknowledge the practices described below.
-          </p>
-          <span>Last updated: July 2026</span>
-        </div>
-
         <div className="policy-sections">
           {SECTIONS.map(({ icon: Icon, title, text, items }, index) => (
             <section className="policy-section" key={title}>

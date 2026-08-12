@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, Routes, Route } from 'react-router-dom';
+import { Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
@@ -13,6 +13,7 @@ import './components/SearchBar.css';
 import './components/CartItem.css';
 import './components/OrderCard.css';
 import './components/PostalShipping.css';
+import './components/AdminSidebar.css';
 import './pages/Home.css';
 import './pages/Login.css';
 import './pages/Shop.css';
@@ -36,6 +37,11 @@ import './styles/premium-system.css';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminPageHeader from './components/AdminPageHeader';
+import AdminSidebar from './components/AdminSidebar';
+import WorkspaceSidebar from './components/WorkspaceSidebar';
+import RoleWelcomeBanner from './components/RoleWelcomeBanner';
+import { useAuth } from './context/AuthContext';
 
 // Pages
 import Home from './pages/Home';
@@ -84,10 +90,23 @@ import NewsletterSubscribers from './pages/admin/NewsletterSubscribers';
 import SupportInbox from './pages/admin/SupportInbox';
 
 function App() {
+  const location = useLocation();
+  const { user } = useAuth();
+  const adminWorkspace = location.pathname.startsWith('/admin');
+  const sellerWorkspace = user?.role === 'seller' && (location.pathname.startsWith('/seller') || location.pathname === '/profile');
+  const customerAccountPaths = ['/cart', '/wishlist', '/checkout', '/orders', '/prescriptions', '/profile'];
+  const customerWorkspace = user?.role === 'customer' && customerAccountPaths.some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`));
+  const workspaceClass = adminWorkspace ? ' admin-workspace' : sellerWorkspace ? ' seller-workspace' : customerWorkspace ? ' customer-workspace' : '';
+  const welcomePath = Boolean(user) && location.pathname === '/';
   return (
-    <div className="app">
+    <div className={`app${workspaceClass}`}>
       <Navbar />
+      {adminWorkspace && <AdminSidebar />}
+      {sellerWorkspace && <WorkspaceSidebar role="seller" />}
+      {customerWorkspace && <WorkspaceSidebar role="customer" />}
       <main className="main-content">
+        <AdminPageHeader />
+        {welcomePath && <RoleWelcomeBanner user={user} />}
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
