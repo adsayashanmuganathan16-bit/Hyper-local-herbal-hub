@@ -312,9 +312,9 @@ function seedUsers() {
     {
       id: uid(),
       name: 'Admin',
-      email: 'admin@herbalhub.in',
+      email: 'herbalhub@gmail.com',
       phone: '+91 90000 00001',
-      password: 'admin123',
+      password: 'Admin@2006',
       role: 'admin',
       is_active: true,
       email_verified: true,
@@ -534,6 +534,15 @@ function save(key, value) {
 // Seed on first run (or when the seed version changes).
 function ensureSeeded() {
   if (load(KEYS.seedVersion, null) === SEED_VERSION && localStorage.getItem(KEYS.medicines)) {
+    const users = load(KEYS.users, []);
+    const migratedUsers = users.map((user) => user.role === 'admin' ? {
+      ...user,
+      email: 'herbalhub@gmail.com',
+      password: 'Admin@2006',
+      is_active: true,
+      email_verified: true,
+    } : user);
+    save(KEYS.users, migratedUsers);
     return;
   }
   const users = seedUsers();

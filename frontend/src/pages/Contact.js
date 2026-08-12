@@ -67,11 +67,11 @@ export default function Contact() {
                 <p>Kilinochchi District, Sri Lanka</p>
               </div>
             </div>
-            <a className="contact-method" href="mailto:adsayashanmuganathan16@gmail.com">
+            <a className="contact-method" href="mailto:herbalhub@gmail.com">
               <span className="contact-method-icon"><FiMail /></span>
               <div>
                 <h3>Email support</h3>
-                <p>adsayashanmuganathan16@gmail.com</p>
+                <p>herbalhub@gmail.com</p>
               </div>
             </a>
             <a className="contact-method" href="tel:+94761132154">

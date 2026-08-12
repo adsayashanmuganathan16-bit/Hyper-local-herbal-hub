@@ -178,7 +178,7 @@ export default function Login() {
         {selectedRole === 'admin' && <div className="auth-demo">
           <p className="auth-demo-title">Administrator quick fill</p>
           <div className="auth-demo-btns">
-            <button type="button" className="auth-demo-btn" onClick={() => setForm({ email: 'adsayashanmuganathan16@gmail.com', password: 'Adsaya#16' })}>
+            <button type="button" className="auth-demo-btn" onClick={() => setForm({ email: 'herbalhub@gmail.com', password: 'Admin@2006' })}>
               Admin
             </button>
           </div>

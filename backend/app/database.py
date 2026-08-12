@@ -199,11 +199,11 @@ async def connect_db():
         "service_area_id": str(active_area["_id"]), "updated_at": utc_now()}})
     from app.utils.helpers import hash_password
     now = utc_now()
-    admin_account = {"name": "Adsaya Shanmuganathan", "email": "adsayashanmuganathan16@gmail.com",
-                     "phone": "0700000001", "password": "Adsaya#16", "role": "admin"}
+    admin_account = {"name": "Adsaya Shanmuganathan", "email": "herbalhub@gmail.com",
+                     "phone": "0700000001", "password": "Admin@2006", "role": "admin"}
     existing_admin = await db.users.find_one({"email": admin_account["email"]})
     if not existing_admin:
-        existing_admin = await db.users.find_one({"email": "admin@herbalhub.com", "role": "admin"})
+        existing_admin = await db.users.find_one({"role": "admin"})
     if existing_admin:
         await db.users.update_one({"_id": existing_admin["_id"]}, {"$set": {
             "name": admin_account["name"], "email": admin_account["email"],

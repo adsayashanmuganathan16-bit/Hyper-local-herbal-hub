@@ -19,7 +19,7 @@ load. Use these accounts (or click the shortcut buttons on the login page):
 
 | Role     | Email                 | Password  |
 | -------- | --------------------- | --------- |
-| Admin    | `adsayashanmuganathan16@gmail.com` | `Adsaya#16` |
+| Admin    | `herbalhub@gmail.com` | `Admin@2006` |
 | Customer | `demo@herbalhub.in`   | `demo123` |
 | Seller   | `seller@herbalhub.in` | `seller123` |
 
