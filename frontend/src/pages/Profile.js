@@ -19,6 +19,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [pwErrors, setPwErrors] = useState({});
   const [changingPw, setChangingPw] = useState(false);
   const [bankForm, setBankForm] = useState({ bank_name: '', branch: '', account_holder_name: '', account_number: '' });
   const [savingBank, setSavingBank] = useState(false);
@@ -30,20 +31,33 @@ export default function Profile() {
   }, [supportsBankProfile]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-  const handlePwChange = (e) => setPwForm({ ...pwForm, [e.target.name]: e.target.value });
+  const handlePwChange = (e) => {
+    const { name, value } = e.target;
+    setPwForm({ ...pwForm, [name]: value });
+    setPwErrors((current) => ({ ...current, [name]: '', form: '' }));
+  };
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (!pwForm.current_password || !pwForm.new_password) return toast.error('Please fill all password fields');
-    if (pwForm.new_password.length < 6) return toast.error('New password must be at least 6 characters');
-    if (pwForm.new_password !== pwForm.confirm_password) return toast.error('New passwords do not match');
+    const errors = {};
+    if (!pwForm.current_password) errors.current_password = 'Current password is required';
+    if (!pwForm.new_password) errors.new_password = 'New password is required';
+    else if (pwForm.new_password.length < 6) errors.new_password = 'New password must be at least 6 characters';
+    else if (pwForm.new_password === pwForm.current_password) errors.new_password = 'New password must be different from the current password';
+    if (!pwForm.confirm_password) errors.confirm_password = 'Please confirm your new password';
+    else if (pwForm.new_password !== pwForm.confirm_password) errors.confirm_password = 'New passwords do not match';
+    setPwErrors(errors);
+    if (Object.keys(errors).length) return;
     try {
       setChangingPw(true);
       await authApi.changePassword(pwForm.current_password, pwForm.new_password);
       toast.success('Password changed successfully');
       setPwForm({ current_password: '', new_password: '', confirm_password: '' });
+      setPwErrors({});
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Password change failed');
+      const message = err.response?.data?.detail || 'Password change failed';
+      setPwErrors((current) => ({ ...current, form: message }));
+      toast.error(message);
     } finally {
       setChangingPw(false);
     }
@@ -180,21 +194,25 @@ export default function Profile() {
               <FiLock size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />
               Change Password
             </h2>
-            <form onSubmit={handleChangePassword} className="profile-form">
+            <form onSubmit={handleChangePassword} className="profile-form" noValidate>
               <div className="form-group">
                 <label className="form-label">Current Password</label>
-                <input type="password" name="current_password" className="form-input" placeholder="Current password" value={pwForm.current_password} onChange={handlePwChange} />
+                <input type="password" name="current_password" className={`form-input${pwErrors.current_password ? ' input-error' : ''}`} placeholder="Current password" value={pwForm.current_password} onChange={handlePwChange} aria-invalid={Boolean(pwErrors.current_password)} />
+                {pwErrors.current_password && <span className="form-error" role="alert">{pwErrors.current_password}</span>}
               </div>
               <div className="grid-2">
                 <div className="form-group">
                   <label className="form-label">New Password</label>
-                  <input type="password" name="new_password" className="form-input" placeholder="Min 6 characters" value={pwForm.new_password} onChange={handlePwChange} />
+                  <input type="password" name="new_password" className={`form-input${pwErrors.new_password ? ' input-error' : ''}`} placeholder="Min 6 characters" value={pwForm.new_password} onChange={handlePwChange} aria-invalid={Boolean(pwErrors.new_password)} />
+                  {pwErrors.new_password && <span className="form-error" role="alert">{pwErrors.new_password}</span>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Confirm New Password</label>
-                  <input type="password" name="confirm_password" className="form-input" placeholder="Re-enter new password" value={pwForm.confirm_password} onChange={handlePwChange} />
+                  <input type="password" name="confirm_password" className={`form-input${pwErrors.confirm_password ? ' input-error' : ''}`} placeholder="Re-enter new password" value={pwForm.confirm_password} onChange={handlePwChange} aria-invalid={Boolean(pwErrors.confirm_password)} />
+                  {pwErrors.confirm_password && <span className="form-error" role="alert">{pwErrors.confirm_password}</span>}
                 </div>
               </div>
+              {pwErrors.form && <p className="form-error form-error-summary" role="alert">{pwErrors.form}</p>}
               <button type="submit" className="btn btn-primary" disabled={changingPw}>
                 <FiLock size={16} /> {changingPw ? 'Updating...' : 'Update Password'}
               </button>

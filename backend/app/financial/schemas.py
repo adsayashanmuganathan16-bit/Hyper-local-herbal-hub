@@ -1,5 +1,4 @@
 from decimal import Decimal
-from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -70,19 +69,3 @@ class PaymentCustomer(BaseModel):
     address: str = Field(min_length=1)
     city: str = Field(min_length=1)
     country: str = Field(default="Sri Lanka", min_length=1)
-
-
-class MockCardPayment(BaseModel):
-    card_holder_name: str = Field(min_length=2, max_length=120)
-    card_number: str = Field(min_length=13, max_length=23)
-    expiry_month: int = Field(ge=1, le=12)
-    expiry_year: int = Field(ge=date.today().year, le=date.today().year + 20)
-    cvv: str = Field(pattern=r"^\d{3,4}$")
-
-    @field_validator("card_number")
-    @classmethod
-    def normalize_card_number(cls, value: str):
-        normalized = value.replace(" ", "").replace("-", "")
-        if not normalized.isdigit():
-            raise ValueError("Card number must contain only digits")
-        return normalized

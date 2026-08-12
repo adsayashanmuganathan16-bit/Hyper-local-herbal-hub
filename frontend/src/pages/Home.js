@@ -17,8 +17,8 @@ import MedicineCard from '../components/MedicineCard';
 const HERO_ART = process.env.PUBLIC_URL + '/assets/herbal-hero.png';
 
 const STATS = [
-  { icon: '🌿', value: '100+', label: 'Herbal Products' },
-  { icon: '🏪', value: '25+', label: 'Local Sellers' },
+  { icon: '🌿', value: '20+', label: 'Herbal Products' },
+  { icon: '🏪', value: '8+', label: 'Local Sellers' },
   { icon: '✦', value: 'AI', label: 'Plant Identification' },
 ];
 
@@ -195,7 +195,7 @@ export default function Home() {
 
       <section className="home-market-section home-seller-showcase">
         <div className="container">
-          <div className="premium-section-heading light"><div><span>Trusted local expertise</span><h2>Meet the people behind your wellness.</h2></div><p>Approved sellers combine traditional knowledge with responsible modern commerce.</p></div>
+          <div className="premium-section-heading light"><div><span>Trusted local expertise</span><h2>Meet the people behind your wellness.</h2></div></div>
           <div className="home-trust-grid">
             <article><span><Store/></span><div><small>APPROVED SELLERS</small><strong>Local businesses, verified</strong><p>Every active seller has a reviewed marketplace profile.</p></div></article>
             <article><span><BadgeCheck/></span><div><small>TRANSPARENT PRODUCTS</small><strong>Know what you are buying</strong><p>Ingredients, benefits, dosage, and seller details in one place.</p></div></article>

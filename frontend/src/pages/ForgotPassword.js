@@ -10,20 +10,24 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
-  const [devToken, setDevToken] = useState(null);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email) return toast.error('Please enter your email');
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return setError('Email address is required');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return setError('Enter a valid email address');
     try {
       setLoading(true);
-      const { data } = await authApi.forgotPassword(email);
+      setError('');
+      await authApi.forgotPassword(normalizedEmail);
+      setEmail(normalizedEmail);
       setSent(true);
-      // Demo helper: the mock backend returns the reset token so you can test the flow.
-      if (data?.reset_token) setDevToken(data.reset_token);
       toast.success('If that email exists, a reset link has been sent');
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Request failed');
+      const message = err.response?.data?.detail || 'Unable to request a reset link';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -44,29 +48,27 @@ export default function ForgotPassword() {
               If an account with <strong>{email}</strong> exists, we've sent a password reset link.
               Please check your inbox.
             </p>
-            {devToken && (
-              <div style={{ marginTop: 16 }}>
-                <p className="text-sm text-gray">Demo mode — use this reset link:</p>
-                <Link to={`/reset-password?token=${devToken}`} className="auth-link">
-                  Reset your password
-                </Link>
-              </div>
-            )}
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="auth-form">
+          <form onSubmit={handleSubmit} className="auth-form" noValidate>
             <div className="form-group">
-              <label className="form-label">Email Address</label>
+              <label className="form-label" htmlFor="forgot-email">Email Address</label>
               <div className="input-icon-wrap">
                 <FiMail size={18} className="input-icon" />
                 <input
+                  id="forgot-email"
                   type="email"
-                  className="form-input has-icon"
+                  className={`form-input has-icon${error ? ' input-error' : ''}`}
                   placeholder="you@email.com"
+                  autoComplete="email"
+                  required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? 'forgot-email-error' : undefined}
                 />
               </div>
+              {error && <span id="forgot-email-error" className="form-error" role="alert">{error}</span>}
             </div>
             <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%' }} disabled={loading}>
               {loading ? 'Sending...' : 'Send Reset Link'}

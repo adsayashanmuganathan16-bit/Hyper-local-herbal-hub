@@ -1,6 +1,7 @@
 from app.utils.time import utc_now
 from datetime import datetime, timedelta, timezone
 import logging
+import re
 
 from bson import ObjectId
 
@@ -704,7 +705,13 @@ async def forgot_password(payload: ForgotPasswordRequest):
 
     db = get_db()
 
-    user = await db.users.find_one({"email": payload.email})
+    normalized_email = str(payload.email).strip().lower()
+    user = await db.users.find_one({
+        "email": {
+            "$regex": f"^{re.escape(normalized_email)}$",
+            "$options": "i",
+        }
+    })
 
     # Always return a generic response to avoid leaking which emails exist.
     generic = {"message": "If an account with that email exists, a reset link has been sent."}
@@ -726,9 +733,20 @@ async def forgot_password(payload: ForgotPasswordRequest):
         }}
     )
 
-    await email_service.send_password_reset_email(
+    email_sent = await email_service.send_password_reset_email(
         user["email"], user.get("name", "there"), reset_token
     )
+
+    if not email_sent:
+        await db.users.update_one(
+            {"_id": user["_id"], "reset_token": reset_token},
+            {"$unset": {"reset_token": "", "reset_token_expires": ""}},
+        )
+        logger.error("Password reset email delivery failed")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="We couldn't send the reset email right now. Please try again later or contact support.",
+        )
 
     return generic
 
@@ -742,17 +760,16 @@ async def reset_password(payload: ResetPasswordRequest):
 
     db = get_db()
 
-    user = await db.users.find_one({"reset_token": payload.token})
+    user = await db.users.find_one({
+        "reset_token": payload.token,
+        "reset_token_expires": {"$gt": utc_now()},
+    })
 
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
-    expires = user.get("reset_token_expires")
-    if not expires or expires < utc_now():
-        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
-
-    await db.users.update_one(
-        {"_id": user["_id"]},
+    result = await db.users.update_one(
+        {"_id": user["_id"], "reset_token": payload.token},
         {
             "$set": {
                 "password": hash_password(payload.new_password),
@@ -761,6 +778,9 @@ async def reset_password(payload: ResetPasswordRequest):
             "$unset": {"reset_token": "", "reset_token_expires": ""}
         }
     )
+
+    if result.modified_count != 1:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     return {"message": "Password reset successfully. You can now log in."}
 

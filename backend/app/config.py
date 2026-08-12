@@ -46,6 +46,8 @@ class Settings:
     RESET_TOKEN_EXPIRE_MINUTES = _integer("RESET_TOKEN_EXPIRE_MINUTES", 30)
     EMAIL_VERIFICATION_EXPIRE_HOURS = _integer("EMAIL_VERIFICATION_EXPIRE_HOURS", 24)
     GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").strip().lower()
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
@@ -104,25 +106,6 @@ class Settings:
     # Development/demo convenience only. Production must leave this disabled.
     AUTO_VERIFY_SELLERS = os.getenv("AUTO_VERIFY_SELLERS", "false").lower() == "true"
 
-    PAYHERE_MERCHANT_ID = os.getenv("PAYHERE_MERCHANT_ID", "")
-    PAYHERE_MERCHANT_SECRET = os.getenv("PAYHERE_MERCHANT_SECRET", "")
-    PAYHERE_NOTIFY_URL = os.getenv(
-        "PAYHERE_NOTIFY_URL", "http://localhost:8000/api/webhooks/payhere"
-    )
-    PAYHERE_RETURN_URL = os.getenv("PAYHERE_RETURN_URL", "http://localhost:3000/orders")
-    PAYHERE_CANCEL_URL = os.getenv("PAYHERE_CANCEL_URL", "http://localhost:3000/checkout")
-    PAYHERE_SANDBOX = os.getenv("PAYHERE_SANDBOX", "true").lower() == "true"
-
-    ONEPAY_APP_ID = os.getenv("ONEPAY_APP_ID", os.getenv("ONEPAY_MERCHANT_ID", ""))
-    ONEPAY_APP_TOKEN = os.getenv("ONEPAY_APP_TOKEN", os.getenv("ONEPAY_API_KEY", ""))
-    ONEPAY_HASH_SALT = os.getenv("ONEPAY_HASH_SALT", os.getenv("ONEPAY_API_SECRET", ""))
-    ONEPAY_SANDBOX = os.getenv("ONEPAY_SANDBOX", "true").lower() == "true"
-    ONEPAY_RETURN_URL = os.getenv("ONEPAY_RETURN_URL", "http://localhost:3000/orders")
-    ONEPAY_CANCEL_URL = os.getenv("ONEPAY_CANCEL_URL", "http://localhost:3000/checkout")
-    ONEPAY_NOTIFY_URL = os.getenv("ONEPAY_NOTIFY_URL", "")
-    ONEPAY_API_BASE_URL = os.getenv("ONEPAY_API_BASE_URL", "https://api.onepay.lk")
-    ONEPAY_TIMEOUT_SECONDS = _number("ONEPAY_TIMEOUT_SECONDS", 15)
-    MOCK_PAYMENT_MERCHANT_NAME = os.getenv("MOCK_PAYMENT_MERCHANT_NAME", "Herbal Hub")
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
     STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
     STRIPE_SUCCESS_URL = os.getenv(
@@ -133,24 +116,15 @@ class Settings:
         "STRIPE_CANCEL_URL",
         "http://localhost:3000/orders/{order_id}?payment=cancelled",
     )
-    PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "mock").strip().lower()
+    PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "stripe").strip().lower()
 
     def validate_payment_configuration(self) -> None:
-        supported = {"mock", "payhere", "onepay", "stripe"}
+        supported = {"stripe"}
         if self.PAYMENT_PROVIDER not in supported:
             raise RuntimeError(
                 f"PAYMENT_PROVIDER must be one of: {', '.join(sorted(supported))}."
             )
         required = {
-            "payhere": {
-                "PAYHERE_MERCHANT_ID": self.PAYHERE_MERCHANT_ID,
-                "PAYHERE_MERCHANT_SECRET": self.PAYHERE_MERCHANT_SECRET,
-            },
-            "onepay": {
-                "ONEPAY_APP_ID": self.ONEPAY_APP_ID,
-                "ONEPAY_APP_TOKEN": self.ONEPAY_APP_TOKEN,
-                "ONEPAY_HASH_SALT": self.ONEPAY_HASH_SALT,
-            },
             "stripe": {
                 "STRIPE_SECRET_KEY": self.STRIPE_SECRET_KEY,
                 "STRIPE_WEBHOOK_SECRET": self.STRIPE_WEBHOOK_SECRET,
@@ -170,6 +144,12 @@ class Settings:
                 raise RuntimeError("STRIPE_SUCCESS_URL must contain {order_id} and {CHECKOUT_SESSION_ID}.")
             if "{order_id}" not in self.STRIPE_CANCEL_URL:
                 raise RuntimeError("STRIPE_CANCEL_URL must contain {order_id}.")
+
+    def validate_admin_configuration(self) -> None:
+        if bool(self.ADMIN_EMAIL) != bool(self.ADMIN_PASSWORD):
+            raise RuntimeError("ADMIN_EMAIL and ADMIN_PASSWORD must be configured together.")
+        if self.ADMIN_EMAIL and ("@" not in self.ADMIN_EMAIL or len(self.ADMIN_PASSWORD) < 10):
+            raise RuntimeError("Configure a valid ADMIN_EMAIL and an ADMIN_PASSWORD of at least 10 characters.")
 
     def validate_storage_configuration(self) -> None:
         if self.PROFILE_IMAGE_STORAGE not in {"local", "s3"}:

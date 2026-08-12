@@ -4,5 +4,5 @@
   <circle cx="300" cy="270" r="122" fill="#d7eadb"/>
   <path d="M300 384c-8-91 22-167 91-224-7 75-39 129-91 163-52-34-84-88-91-163 69 57 99 133 91 224Z" fill="#4f8b62"/>
   <path d="M300 196v223" stroke="#27643e" stroke-width="18" stroke-linecap="round"/>
-  <text x="300" y="500" text-anchor="middle" fill="#27643e" font-family="Noto Sans Tamil, sans-serif" font-size="30" font-weight="700">Herbal Hub</text>
+  <text x="300" y="500" text-anchor="middle" fill="#27643e" font-family="Montserrat, sans-serif" font-size="30" font-weight="700">Herbal Hub</text>
 </svg>

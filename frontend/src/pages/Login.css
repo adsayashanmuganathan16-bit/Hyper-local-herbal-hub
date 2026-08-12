@@ -47,37 +47,6 @@
   .input-icon-right:hover { color: var(--gray-700); }
   .auth-footer-text { text-align: center; font-size: 14px; color: var(--gray-500); }
   .auth-link { color: var(--green-800); font-weight: 600; }
-  .auth-demo {
-    margin: 0 0 20px;
-    padding: 14px 16px;
-    background: var(--green-50);
-    border: 1px dashed var(--green-500);
-    border-radius: var(--radius-lg, 12px);
-    text-align: center;
-  }
-  .auth-demo-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--green-800);
-    margin-bottom: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .auth-demo-btns { display: flex; gap: 10px; justify-content: center; }
-  .auth-demo-btn {
-    flex: 1;
-    max-width: 140px;
-    padding: 8px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--green-800);
-    background: var(--white);
-    border: 1px solid var(--green-500);
-    border-radius: var(--radius-md, 8px);
-    cursor: pointer;
-    transition: var(--transition);
-  }
-  .auth-demo-btn:hover { background: var(--green-800); color: var(--white); }
   .auth-link:hover { text-decoration: underline; }
   .google-auth-block { margin-top: 22px; }
   .auth-divider { display:flex; align-items:center; gap:12px; margin:0 0 18px; color:var(--gray-400); font-size:11px; text-transform:uppercase; letter-spacing:.08em; }

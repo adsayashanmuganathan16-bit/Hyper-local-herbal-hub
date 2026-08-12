@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
 /* ===== CSS Variables - White & Green Theme ===== */
 :root {
     --green-900: #143d2b;
@@ -38,17 +40,19 @@
     --radius-lg: 16px;
     --radius-xl: 24px;
     --radius-full: 9999px;
-    --font-primary: 'Noto Sans Tamil', sans-serif;
-    --font-display: var(--font-primary);
-    --font-body: var(--font-primary);
+    --font-primary: 'Montserrat', sans-serif;
+    --font-display: 'Montserrat', sans-serif;
+    --font-body: 'Montserrat', sans-serif;
     --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   /* ===== Reset ===== */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html {
+  html,
+  body,
+  #root {
     scroll-behavior: smooth;
-    font-family: var(--font-primary);
+    font-family: 'Montserrat', sans-serif;
   }
   body {
     font-family: var(--font-body);
@@ -63,22 +67,31 @@
     overflow-x: hidden;
   }
 
-  /* One typeface across every page and component, including controls and
-     generated labels. This prevents component styles or browser defaults
-     from introducing a second font. */
+  /* Keep body copy and controls consistent across pages and components. */
   body,
   body *,
   body *::before,
   body *::after {
-    font-family: var(--font-primary) !important;
+    font-family: var(--font-body) !important;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-    font-weight: 700;
+    font-family: var(--font-display) !important;
+    font-weight: 600;
     line-height: 1.2;
     letter-spacing: -0.025em;
   }
+
+  label { font-weight: 500; }
+
+  button,
+  input,
+  textarea,
+  select {
+    font-family: inherit;
+  }
+
+  button { font-weight: 600; }
 
   /* Keep functional numbers clean and easy to scan across the storefront. */
   :where(
@@ -98,8 +111,8 @@
   }
   a { text-decoration: none; color: inherit; }
   img { max-width: 100%; display: block; }
-  button { cursor: pointer; border: none; background: none; font-family: var(--font-primary); letter-spacing: -0.01em; }
-  input, select, textarea { font-family: var(--font-primary); font-size: inherit; letter-spacing: -0.01em; }
+  button { cursor: pointer; border: none; background: none; letter-spacing: -0.01em; }
+  input, select, textarea { font-size: inherit; letter-spacing: -0.01em; }
   ul, ol { list-style: none; }
   button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
     outline: 3px solid rgba(201,146,61,.35);
@@ -211,10 +224,13 @@
     padding-right: 40px;
   }
   .form-error {
+    display: block;
     color: var(--red-500);
     font-size: 13px;
     margin-top: 4px;
+    font-weight: 500;
   }
+  .form-error-summary { margin: 0 0 12px; }
   
   /* ===== Cards ===== */
   .card {

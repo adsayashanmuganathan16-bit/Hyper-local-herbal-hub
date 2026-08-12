@@ -25,11 +25,11 @@ REDIS_URL=redis://localhost:6379/0
 DATA_ENCRYPTION_KEY=<fernet-key>
 DEFAULT_COMMISSION_PERCENT=10.00
 PAYOUT_MODE=manual
-PAYMENT_PROVIDER=payhere
-PAYHERE_MERCHANT_ID=...
-PAYHERE_MERCHANT_SECRET=...
-PAYHERE_SANDBOX=true
-PAYHERE_NOTIFY_URL=https://public-test-domain/api/webhooks/payhere
+PAYMENT_PROVIDER=stripe
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_SUCCESS_URL=http://localhost:3000/orders/{order_id}?payment=success&session_id={CHECKOUT_SESSION_ID}
+STRIPE_CANCEL_URL=http://localhost:3000/orders/{order_id}?payment=cancelled
 ```
 
 Generate the encryption key once and keep it safe:
@@ -41,7 +41,7 @@ cd backend
 
 Changing this key later prevents existing NIC and bank account values from being decrypted.
 
-PayHere cannot call a localhost webhook. For sandbox testing, expose port 8000 through a secure public tunnel and use its HTTPS URL as `PAYHERE_NOTIFY_URL`.
+Stripe cannot call a localhost webhook directly. For local testing, forward events with the Stripe CLI and use the generated webhook signing secret.
 
 ## Run without Docker
 
@@ -65,7 +65,6 @@ cd backend
 For the React application, create `frontend/.env`:
 
 ```env
-REACT_APP_USE_REAL_API=true
 REACT_APP_API_URL=http://localhost:8000
 ```
 
@@ -75,7 +74,7 @@ Then run `npm start` from `frontend/`.
 
 1. A seller completes `/seller/payment-setup`.
 2. An admin approves the seller at `/admin/sellers`.
-3. A PayHere webhook verifies an LKR payment and creates one payout per seller allocation.
+3. A Stripe webhook verifies the payment and creates one payout per seller allocation.
 4. Celery changes `PENDING` payouts to `READY_FOR_MANUAL_TRANSFER`.
 5. The admin transfers funds using internet banking and records the reference at `/admin/payouts`.
 6. The payout becomes `PAID`, an attempt and audit record are stored, and the seller is notified.

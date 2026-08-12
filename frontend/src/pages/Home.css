@@ -80,8 +80,9 @@
   gap: 9px;
   color: var(--home-forest);
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .18em;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  letter-spacing: 3px;
   text-transform: uppercase;
 }
 
@@ -97,7 +98,7 @@
   margin: 0;
   color: var(--home-deep);
   font-family: var(--font-display);
-  font-size: clamp(40px, 5.4vw, 65px);
+  font-size: clamp(38px, 5vw, 60px);
   font-weight: 700;
   letter-spacing: -.05em;
   line-height: .96;
@@ -141,9 +142,15 @@
   box-shadow: 0 17px 46px rgba(24, 72, 50, .1);
 }
 
+.home-hero-search .searchbar-icon {
+  transform: translateX(-4px);
+}
+
 .home-hero-search .searchbar-btn {
   padding: 13px 25px;
   background: var(--home-forest);
+  transform: scale(.92);
+  transform-origin: right center;
 }
 
 .home-stats {
@@ -489,7 +496,7 @@
 
 @media (max-width: 1100px) {
   .home-hero-grid { grid-template-columns: 1fr 410px; gap: 38px; }
-  .home-hero h1 { font-size: clamp(44px, 5vw, 58px); }
+  .home-hero h1 { font-size: clamp(40px, 4.7vw, 54px); }
   .home-stat { min-width: auto; margin-right: 15px; padding-right: 15px; }
   .home-stat-icon { display: none; }
   .home-features-grid { grid-template-columns: repeat(2, 1fr); }
@@ -521,7 +528,7 @@
 @media (max-width: 560px) {
   .home-hero-grid { padding: 43px 18px 55px; }
   .home-eyebrow { font-size: 9px; }
-  .home-hero h1 { font-size: 46px; }
+  .home-hero h1 { font-size: 42px; }
   .home-hero-copy h2 { font-size: 28px; }
   .home-hero-description { font-size: 14px; }
   .home-stats { align-items: stretch; }

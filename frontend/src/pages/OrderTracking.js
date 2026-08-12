@@ -322,11 +322,11 @@ export default function OrderTracking() {
               <h3>Payment Info</h3>
               <div className="cart-summary-row">
                 <span>Method</span>
-                <span className="font-medium">{order.payment_method === 'cod' ? 'Cash on Delivery' : order.payment_method === 'stripe' ? 'Stripe Card Payment' : order.payment_method === 'mock' ? 'Demo Card Payment' : order.payment_method === 'onepay' ? 'OnePay Online Payment' : order.payment_method === 'payhere' ? 'PayHere Online Payment' : formatStatus(order.payment_method)}</span>
+                <span className="font-medium">{order.payment_method === 'cod' ? 'Cash on Delivery' : order.payment_method === 'stripe' ? 'Stripe Card Payment' : formatStatus(order.payment_method)}</span>
               </div>
               <div className="cart-summary-row">
                 <span>Status</span>
-                <span className={`badge ${getStatusColor(order.payment_status)}`}>{order.payment_status === 'pending' ? (order.payment_method === 'cod' ? 'Awaiting Cash on Delivery' : `Awaiting ${order.payment_method === 'stripe' ? 'Stripe' : order.payment_method === 'mock' ? 'Demo Payment' : order.payment_method === 'onepay' ? 'OnePay' : 'PayHere'} Confirmation`) : formatStatus(order.payment_status)}</span>
+                <span className={`badge ${getStatusColor(order.payment_status)}`}>{order.payment_status === 'pending' ? (order.payment_method === 'cod' ? 'Awaiting Cash on Delivery' : 'Awaiting Stripe Confirmation') : formatStatus(order.payment_status)}</span>
               </div>
             </div>
           </div>

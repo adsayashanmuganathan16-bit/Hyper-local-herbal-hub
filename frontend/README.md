@@ -12,18 +12,11 @@ npm start        # dev server at http://localhost:3000
 npm run build    # production build in ./build
 ```
 
-## Demo Accounts
+## Accounts
 
-The app seeds sample data (products, orders, reviews, prescriptions) on first
-load. Use these accounts (or click the shortcut buttons on the login page):
-
-| Role     | Email                 | Password  |
-| -------- | --------------------- | --------- |
-| Admin    | `adsayashanmuganathan16@gmail.com` | `Adsaya#16` |
-| Customer | `demo@herbalhub.in`   | `demo123` |
-| Seller   | `seller@herbalhub.in` | `seller123` |
-
-You can also register a new customer account from the Register page.
+The frontend does not contain seeded credentials. Customers can register from
+the Register page, while administrator provisioning is configured securely in
+the backend environment.
 
 ## What works
 
@@ -36,28 +29,15 @@ You can also register a new customer account from the Register page.
 - **Admin panel** — dashboard, manage medicines (CRUD), manage orders &
   statuses, manage users, and reports/analytics with CSV export.
 
-## How it works (no backend needed)
+## How it works
 
-Instead of calling a real HTTP backend, `src/api/axios.js` is a small
-axios-compatible client that routes every request to an **in-browser mock
-backend** (`src/mock/`):
-
-- `src/mock/db.js` — seed data + a `localStorage`-backed data store.
-- `src/mock/backend.js` — request router implementing all API endpoints.
-
-Because it uses `localStorage`, your changes (new orders, cart, profile edits,
-products you add as admin, etc.) persist across page reloads. To wipe the data
-and re-seed, clear the site's `localStorage` (or bump `SEED_VERSION` in
-`src/mock/db.js`).
-
-To connect a real backend later, replace `src/api/axios.js` with a normal axios
-instance pointed at your API — the rest of the app already speaks the same
-endpoints.
+The frontend uses Axios to communicate with the FastAPI backend configured by
+`REACT_APP_API_URL`. Authentication, checkout, payments, and role permissions
+are enforced by the backend.
 
 ## Project Structure
 
 - `src/api/` — API client and per-domain call modules
-- `src/mock/` — in-browser mock backend (seed data + router)
 - `src/components/` — reusable UI components
 - `src/pages/` — route-level pages (including `pages/admin`)
 - `src/context/` — React context providers (auth, cart)

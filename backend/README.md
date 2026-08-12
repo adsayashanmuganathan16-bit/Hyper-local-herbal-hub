@@ -53,8 +53,12 @@ configuration is:
 MONGODB_URI=mongodb://localhost:27017/herbal_hub
 DB_NAME=herbal_hub
 SECRET_KEY=<long-random-value>
+ADMIN_EMAIL=herbalhub468@gmail.com
+ADMIN_PASSWORD=<strong-administrator-password>
 FRONTEND_URL=http://localhost:3000
-PAYMENT_PROVIDER=mock
+PAYMENT_PROVIDER=stripe
+STRIPE_SECRET_KEY=<stripe-secret-key>
+STRIPE_WEBHOOK_SECRET=<stripe-webhook-secret>
 PLANTNET_API_KEY=<your-plantnet-api-key>
 GEMINI_API_KEY=<your-google-ai-studio-api-key>
 ```
@@ -151,10 +155,8 @@ Some tests use environment overrides. Keep `.env` local and never commit it.
 
 ## Configuration notes
 
-- `PAYMENT_PROVIDER=mock` is the safe local default.
-- PayHere and OnePay credentials are only required when their provider is
-  selected.
-- SMTP, AWS, Twilio, Stripe, Geoapify, Redis, and Celery are optional for the
+- Stripe is the only online checkout provider; cash on delivery remains available.
+- SMTP, AWS, Twilio, Geoapify, Redis, and Celery are optional for the
   corresponding features.
 - `PLANTNET_API_KEY` enables `POST /api/plants/identify`; the key remains on
   the backend and is never sent to the browser.

@@ -8,14 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pymongo import ReturnDocument
 
 from app.database import get_db
-from app.financial.schemas import FinancialOrderCreate, MockCardPayment, PaymentCustomer
+from app.financial.schemas import FinancialOrderCreate, PaymentCustomer
 from app.middleware.auth_middleware import get_current_user
 from app.middleware.rate_limit import payment_request_limit, payment_webhook_limit
 from app.services.commission_service import money
 from app.services.financial_order_service import create_financial_order
-from app.services.payhere_service import payhere_gateway
-from app.services.onepay_service import OnePayError, onepay_gateway
-from app.services.mock_payment_service import mock_payment_gateway
 from app.services.stripe_service import stripe_gateway
 from app.services.payment_gateway_service import get_payment_gateway
 from app.config import settings
@@ -166,34 +163,6 @@ async def _record_verified_payment(db, event, payload: dict, request: Request, s
     return {"status": "PAID"}
 
 
-@router.post("/api/webhooks/payhere")
-async def payhere_webhook(request: Request, _=Depends(payment_webhook_limit)):
-    db, payload = get_db(), dict(await request.form())
-    try:
-        event = payhere_gateway.verify_webhook(payload)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    status_map = {"2": "PAID", "0": "PENDING", "-1": "FAILED", "-2": "FAILED", "-3": "CHARGEDBACK"}
-    return await _record_verified_payment(db, event, payload, request, status_map.get(event.status_code, "FAILED"))
-
-
-@router.post("/api/webhooks/onepay")
-async def onepay_webhook(request: Request, _=Depends(payment_webhook_limit)):
-    db = get_db()
-    try:
-        payload = await request.json()
-        if not isinstance(payload, dict):
-            raise ValueError("OnePay callback must be a JSON object")
-        event = onepay_gateway.verify_webhook(payload)
-    except (ValueError, OnePayError) as exc:
-        raise HTTPException(400, str(exc)) from exc
-    payment = await db.payments.find_one({"transaction_id": event.transaction_id})
-    if not payment or payment["order_id"] != event.order_id:
-        raise HTTPException(404, "OnePay transaction was not found")
-    status = "PAID" if event.status_code == "1" else "FAILED"
-    return await _record_verified_payment(db, event, payload, request, status)
-
-
 @router.post("/api/webhooks/stripe")
 async def stripe_webhook(request: Request, _=Depends(payment_webhook_limit)):
     import stripe
@@ -272,42 +241,3 @@ async def confirm_stripe_checkout(
         "stripe_status": status,
     }
     return await _record_verified_payment(db, event, payload, request, status)
-
-
-@router.get("/api/payments/mock/{order_id}")
-async def mock_payment_details(order_id: str, user=Depends(get_current_user)):
-    order = await get_db().financial_orders.find_one({"order_id": order_id, "customer_id": user["_id"]})
-    if not order:
-        raise HTTPException(404, "Order not found")
-    return {
-        "merchant_name": settings.MOCK_PAYMENT_MERCHANT_NAME,
-        "order_id": order_id,
-        "amount": order["total_amount"],
-        "currency": order["currency"],
-        "payment_status": order["payment_status"],
-    }
-
-
-@router.post("/api/payments/mock/{order_id}/pay")
-async def process_mock_payment(order_id: str, card: MockCardPayment, request: Request,
-                               user=Depends(get_current_user), _=Depends(payment_request_limit)):
-    if settings.PAYMENT_PROVIDER != "mock":
-        raise HTTPException(404, "Mock payment gateway is disabled")
-    db = get_db()
-    order = await db.financial_orders.find_one({"order_id": order_id, "customer_id": user["_id"]})
-    payment = await db.payments.find_one({"order_id": order_id})
-    if not order or not payment:
-        raise HTTPException(404, "Order not found")
-    if order.get("order_status") == "CANCELLED" or payment["status"] == "CANCELLED":
-        raise HTTPException(409, "Order has been cancelled")
-    if payment["status"] == "PAID" or order["payment_status"] == "PAID":
-        raise HTTPException(409, "Payment has already been completed")
-
-    event = mock_payment_gateway.process_demo_payment(order_id, Decimal(order["total_amount"]), card.card_number)
-    status = "PAID" if event.status_code == "1" else "FAILED"
-    audit_payload = {"provider": "mock", "order_id": order_id, "status": status,
-                     "transaction_id": event.transaction_id}
-    result = await _record_verified_payment(db, event, audit_payload, request, status)
-    if status == "FAILED":
-        raise HTTPException(400, "Demo payment failed.")
-    return {**result, "transaction_id": event.transaction_id, "order_id": order_id}

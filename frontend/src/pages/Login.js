@@ -14,6 +14,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   const googleRoleRef = useRef(selectedRole || 'customer');
   const googleButtonRef = useRef(null);
 
@@ -25,7 +26,11 @@ export default function Login() {
     setSelectedRole(role);
   }
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+    setErrors((current) => ({ ...current, [name]: '', form: '' }));
+  };
 
   useEffect(() => { googleRoleRef.current = selectedRole || 'customer'; }, [selectedRole]);
 
@@ -44,7 +49,12 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.email || !form.password) return toast.error('Please fill all fields');
+    const validationErrors = {};
+    if (!form.email.trim()) validationErrors.email = 'Email address is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) validationErrors.email = 'Enter a valid email address';
+    if (!form.password) validationErrors.password = 'Password is required';
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length) return;
     try {
       setLoading(true);
       const loggedInUser = await login(form.email, form.password);
@@ -66,7 +76,9 @@ export default function Login() {
         { replace: true }
       );
     } catch (err) {
-      toast.error(err.response?.data?.detail || err.message || 'Login failed');
+      const message = err.response?.data?.detail || err.message || 'Login failed';
+      setErrors((current) => ({ ...current, form: message }));
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -146,24 +158,27 @@ export default function Login() {
           <h1 className="auth-title">{selectedRole === 'customer' ? 'Customer Login' : selectedRole === 'seller' ? 'Seller Login' : 'Admin Login'}</h1>
           <p className="auth-subtitle">Login to your Herbal Hub account</p>
         </div>
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit} className="auth-form" noValidate>
           <div className="form-group">
-            <label className="form-label">Email Address</label>
+            <label className="form-label" htmlFor="login-email">Email Address</label>
             <div className="input-icon-wrap">
               <FiMail size={18} className="input-icon" />
-              <input type="email" name="email" className="form-input has-icon" placeholder="you@email.com" value={form.email} onChange={handleChange} />
+              <input id="login-email" type="email" name="email" className={`form-input has-icon${errors.email ? ' input-error' : ''}`} placeholder="you@email.com" value={form.email} onChange={handleChange} autoComplete="email" aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? 'login-email-error' : undefined} />
             </div>
+            {errors.email && <span id="login-email-error" className="form-error" role="alert">{errors.email}</span>}
           </div>
           <div className="form-group">
-            <label className="form-label">Password</label>
+            <label className="form-label" htmlFor="login-password">Password</label>
             <div className="input-icon-wrap">
               <FiLock size={18} className="input-icon" />
-              <input type={showPass ? 'text' : 'password'} name="password" className="form-input has-icon" placeholder="••••••••" value={form.password} onChange={handleChange} />
+              <input id="login-password" type={showPass ? 'text' : 'password'} name="password" className={`form-input has-icon${errors.password ? ' input-error' : ''}`} placeholder="••••••••" value={form.password} onChange={handleChange} autoComplete="current-password" aria-invalid={Boolean(errors.password)} aria-describedby={errors.password ? 'login-password-error' : undefined} />
               <button type="button" className="input-icon-right" onClick={() => setShowPass(!showPass)}>
                 {showPass ? <FiEyeOff size={18} /> : <FiEye size={18} />}
               </button>
             </div>
+            {errors.password && <span id="login-password-error" className="form-error" role="alert">{errors.password}</span>}
           </div>
+          {errors.form && <p className="form-error form-error-summary" role="alert">{errors.form}</p>}
           <div style={{ textAlign: 'right', marginBottom: 12 }}>
             <Link to="/forgot-password" className="auth-link">Forgot password?</Link>
           </div>
@@ -174,14 +189,6 @@ export default function Login() {
         {process.env.REACT_APP_GOOGLE_CLIENT_ID && <div className="google-auth-block">
           <div className="auth-divider"><span>or continue with Google</span></div>
           <div className="google-button-wrap" ref={googleButtonRef} />
-        </div>}
-        {selectedRole === 'admin' && <div className="auth-demo">
-          <p className="auth-demo-title">Administrator quick fill</p>
-          <div className="auth-demo-btns">
-            <button type="button" className="auth-demo-btn" onClick={() => setForm({ email: 'adsayashanmuganathan16@gmail.com', password: 'Adsaya#16' })}>
-              Admin
-            </button>
-          </div>
         </div>}
         <p className="auth-footer-text">{selectedRole === 'seller' ? <>New seller? <Link to="/seller-register" className="auth-link">Complete seller application</Link></> : <>Don't have an account? <Link to="/register" className="auth-link">Create Account</Link></>}</p>
       </div>

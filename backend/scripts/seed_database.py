@@ -3,6 +3,7 @@
 
 import asyncio
 import random
+import secrets
 import sys
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
@@ -120,12 +121,12 @@ async def seed():
 
         users = {}
         specs = [
-            ("admin", "Adsaya Shanmuganathan", "adsayashanmuganathan16@gmail.com", "+94770000001", "Adsaya#16", "admin"),
-            ("customer", "Nimali Perera", "demo@herbalhub.in", "+94770000002", "demo123", "customer"),
-            ("seller1", "Kasun Ayurveda", "seller@herbalhub.in", "+94770000003", "seller123", "seller"),
-            ("seller2", "Amaya Naturals", "seller2@herbalhub.in", "+94770000004", "seller123", "seller"),
-            ("seller3", "Ceylon Herbal Care", "seller3@herbalhub.in", "+94770000005", "seller123", "seller"),
-            ("delivery", "Ruwan Silva", "delivery@herbalhub.in", "+94770000006", "delivery123", "delivery_partner"),
+            ("admin", "Herbal Hub Administrator", settings.ADMIN_EMAIL, "+94770000001", settings.ADMIN_PASSWORD, "admin"),
+            ("customer", "Nimali Perera", "demo@herbalhub.in", "+94770000002", secrets.token_urlsafe(24), "customer"),
+            ("seller1", "Kasun Ayurveda", "seller@herbalhub.in", "+94770000003", secrets.token_urlsafe(24), "seller"),
+            ("seller2", "Amaya Naturals", "seller2@herbalhub.in", "+94770000004", secrets.token_urlsafe(24), "seller"),
+            ("seller3", "Ceylon Herbal Care", "seller3@herbalhub.in", "+94770000005", secrets.token_urlsafe(24), "seller"),
+            ("delivery", "Ruwan Silva", "delivery@herbalhub.in", "+94770000006", secrets.token_urlsafe(24), "delivery_partner"),
         ]
         for key, name, email, phone, password, role in specs:
             users[key] = await upsert_user(db, name=name, email=email, phone=phone, password=password, role=role)
@@ -219,9 +220,9 @@ async def seed():
                 "parcel_weight": parcel_weight, "final_amount": float(final),
                 "address": {"name": users["customer"]["name"], "phone": users["customer"]["phone"],
                             "address_line1": "42 Green Lane", "city": "Colombo", "state": "Western", "pincode": "00700"},
-                "payment_method": "payhere" if order_index < 10 else "cod",
+                "payment_method": "stripe" if order_index < 10 else "cod",
                 "payment_status": "completed" if order_index < 10 else "pending",
-                "payment_id": f"PH-DEMO-{order_index + 1:04d}" if order_index < 10 else None,
+                "payment_id": f"STRIPE-SEED-{order_index + 1:04d}" if order_index < 10 else None,
                 "status": status, "prescription_id": None, "notes": "Demo seeded order",
                 "courier_service": "Sri Lanka Post" if status in {"packed", "delivered"} else None,
                 "tracking_number": f"SLPOST{order_index + 1:06d}" if status in {"packed", "delivered"} else None,
@@ -285,13 +286,13 @@ async def seed():
                 "created_at": order["created_at"], "updated_at": NOW, **SEED,
             })
             payment_doc = {
-                "order_id": order_id, "payment_gateway": "payhere" if order_index < 10 else "cod",
+                "order_id": order_id, "payment_gateway": "stripe" if order_index < 10 else "cod",
                 "amount": f"{order['final_amount']:.2f}", "currency": "LKR", "status": financial_status,
                 "created_at": order["created_at"], "updated_at": NOW, **SEED,
             }
             if order_index < 10:
                 payment_doc.update({
-                    "transaction_id": f"PH-DEMO-{order_index + 1:04d}",
+                    "transaction_id": f"STRIPE-SEED-{order_index + 1:04d}",
                     "webhook_payload_hash": f"demo-hash-{order_index + 1}",
                     "paid_at": order["created_at"] + timedelta(minutes=5),
                 })
@@ -357,13 +358,7 @@ async def seed():
         await db.payouts.create_index("allocation_id", unique=True)
 
         print("\nHerbal Hub demo database seeded successfully.")
-        print("Demo logins:")
-        print("  Admin:    adsayashanmuganathan16@gmail.com / Adsaya#16")
-        print("  Customer: demo@herbalhub.in / demo123")
-        print("  Seller:   seller@herbalhub.in / seller123")
-        print("  Seller 2: seller2@herbalhub.in / seller123")
-        print("  Seller 3: seller3@herbalhub.in / seller123")
-        print("  Delivery: delivery@herbalhub.in / delivery123")
+        print("Seed accounts created. Credentials are not printed or stored in source code.")
     finally:
         client.close()
 
