@@ -12,6 +12,7 @@ from app.routes import auth, medicines, cart, wishlist, checkout, orders, prescr
 async def lifespan(_: FastAPI):
     settings.validate_payment_configuration()
     settings.validate_storage_configuration()
+    settings.validate_admin_configuration()
     await connect_db()
     try:
         yield

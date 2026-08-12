@@ -199,21 +199,28 @@ async def connect_db():
         "service_area_id": str(active_area["_id"]), "updated_at": utc_now()}})
     from app.utils.helpers import hash_password
     now = utc_now()
-    admin_account = {"name": "Adsaya Shanmuganathan", "email": "herbalhub@gmail.com",
-                     "phone": "0700000001", "password": "Admin@2006", "role": "admin"}
-    existing_admin = await db.users.find_one({"email": admin_account["email"]})
-    if not existing_admin:
-        existing_admin = await db.users.find_one({"role": "admin"})
-    if existing_admin:
-        await db.users.update_one({"_id": existing_admin["_id"]}, {"$set": {
-            "name": admin_account["name"], "email": admin_account["email"],
-            "password": hash_password(admin_account["password"]), "role": "admin",
-            "is_active": True, "email_verified": True, "updated_at": now,
-        }})
+    if settings.ADMIN_EMAIL and settings.ADMIN_PASSWORD:
+        admin_account = {"name": "Herbal Hub Administrator", "email": settings.ADMIN_EMAIL,
+                         "phone": "0700000001", "role": "admin"}
+        admin_password_hash = hash_password(settings.ADMIN_PASSWORD)
+        email_owner = await db.users.find_one({"email": admin_account["email"]})
+        if email_owner and email_owner.get("role") != "admin":
+            raise RuntimeError("ADMIN_EMAIL is already assigned to a non-admin account")
+        existing_admin = email_owner
+        if not existing_admin:
+            existing_admin = await db.users.find_one({"role": "admin"})
+        if existing_admin:
+            await db.users.update_one({"_id": existing_admin["_id"]}, {"$set": {
+                "name": admin_account["name"], "email": admin_account["email"],
+                "password": admin_password_hash, "role": "admin",
+                "is_active": True, "email_verified": True, "updated_at": now,
+            }})
+        else:
+            await db.users.insert_one({**admin_account, "password": admin_password_hash,
+                "is_active": True, "email_verified": True, "address": None, "profile_image": None,
+                "created_at": now, "updated_at": now})
     else:
-        await db.users.insert_one({**admin_account, "password": hash_password(admin_account["password"]),
-            "is_active": True, "email_verified": True, "address": None, "profile_image": None,
-            "created_at": now, "updated_at": now})
+        logger.warning("Admin seed skipped because ADMIN_EMAIL and ADMIN_PASSWORD are not configured")
     logger.info("MongoDB startup initialization completed")
 
 

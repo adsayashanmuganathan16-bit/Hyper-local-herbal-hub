@@ -16,6 +16,4 @@ export const orderApi = {
     `/api/payments/stripe/${orderId}/confirm`,
     { session_id: sessionId }
   ),
-  getMockPayment: (orderId) => api.get(`/api/payments/mock/${orderId}`),
-  payMock: (orderId, data) => api.post(`/api/payments/mock/${orderId}/pay`, data),
 };

@@ -57,9 +57,9 @@ export default function Footer() {
                 <span>+94 76 113 2154</span>
               </a>
 
-              <a className="footer-contact-item" href="mailto:herbalhub@gmail.com">
+              <a className="footer-contact-item" href="mailto:herbalhub468@gmail.com">
                 <FiMail size={16} />
-                <span>herbalhub@gmail.com</span>
+                <span>herbalhub468@gmail.com</span>
               </a>
             </div>
           </div>

@@ -56,7 +56,6 @@ import MedicineDetail from './pages/MedicineDetail';
 import Cart from './pages/Cart';
 import Wishlist from './pages/Wishlist';
 import Checkout from './pages/Checkout';
-import DemoPayment from './pages/DemoPayment';
 import Orders from './pages/Orders';
 import OrderTracking from './pages/OrderTracking';
 import Prescription from './pages/Prescription';
@@ -129,7 +128,6 @@ function App() {
           <Route path="/cart" element={<ProtectedRoute customerOnly><Cart /></ProtectedRoute>} />
           <Route path="/wishlist" element={<ProtectedRoute customerOnly><Wishlist /></ProtectedRoute>} />
           <Route path="/checkout" element={<ProtectedRoute customerOnly><Checkout /></ProtectedRoute>} />
-          <Route path="/demo-payment" element={<ProtectedRoute customerOnly><DemoPayment /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute customerOnly><Orders /></ProtectedRoute>} />
           <Route path="/orders/:id" element={<ProtectedRoute customerOnly><OrderTracking /></ProtectedRoute>} />
           <Route path="/prescriptions" element={<ProtectedRoute customerOnly><Prescription /></ProtectedRoute>} />
