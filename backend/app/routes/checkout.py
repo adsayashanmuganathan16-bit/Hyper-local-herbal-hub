@@ -7,7 +7,6 @@ from app.middleware.auth_middleware import require_customer
 from app.utils.helpers import calculate_order_amounts, get_product_image, serialize_doc
 from app.services.payment_service import payment_service
 from app.services.email_service import email_service
-from app.config import settings
 from app.services.service_area_service import validate_service_coordinates, distance_km
 from app.services.postal_shipping_service import calculate_parcel_weight, calculate_shipping_fee
 
@@ -112,11 +111,8 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     amounts = calculate_order_amounts(validated_items, shipping_fee)
 
-    is_online_payment = order_data.payment_method.value != "cod"
-    # The UI may call this option "online", "card", or retain a provider value
-    # from an older cached build. Every explicit non-COD selection must use the
-    # currently configured gateway; only an explicit `cod` value enters COD.
-    effective_payment_method = settings.PAYMENT_PROVIDER if is_online_payment else "cod"
+    is_online_payment = order_data.payment_method.value == "stripe"
+    effective_payment_method = order_data.payment_method.value
 
     # Create order document
     order_doc = {
@@ -184,7 +180,7 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
                 amounts["final_amount"], seller_amounts, delivery_allocations,
             )
             name_parts = order_data.address.get("name", current_user.get("name", "Customer")).split(maxsplit=1)
-            payment_gateway = get_payment_gateway(settings.PAYMENT_PROVIDER)
+            payment_gateway = get_payment_gateway("stripe")
             payment_request = payment_gateway.create_payment_request(str(result.inserted_id), amounts["final_amount"], {
                 "first_name": name_parts[0], "last_name": name_parts[1] if len(name_parts) > 1 else "",
                 "email": current_user["email"], "phone": order_data.address.get("phone", current_user.get("phone", "")),
@@ -194,7 +190,7 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
             if payment_request.get("transaction_id"):
                 await db.payments.update_one(
                     {"order_id": str(result.inserted_id)},
-                    {"$set": {"payment_gateway": settings.PAYMENT_PROVIDER,
+                    {"$set": {"payment_gateway": "stripe",
                               "transaction_id": payment_request["transaction_id"],
                               "updated_at": utc_now()}},
                 )

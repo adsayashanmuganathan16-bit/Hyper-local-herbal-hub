@@ -96,3 +96,4 @@ def test_generate_bilingual_content_uses_structured_json(monkeypatch):
     assert result == CONTENT
     assert captured["headers"]["x-goog-api-key"] == "gemini-test-key"
     assert captured["body"]["generationConfig"]["responseMimeType"] == "application/json"
+    assert "temperature" not in captured["body"]["generationConfig"]

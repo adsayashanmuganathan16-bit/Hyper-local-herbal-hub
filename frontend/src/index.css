@@ -38,14 +38,18 @@
     --radius-lg: 16px;
     --radius-xl: 24px;
     --radius-full: 9999px;
-    --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-primary: 'Noto Sans Tamil', sans-serif;
+    --font-display: var(--font-primary);
+    --font-body: var(--font-primary);
     --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   /* ===== Reset ===== */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+    font-family: var(--font-primary);
+  }
   body {
     font-family: var(--font-body);
     font-variant-numeric: lining-nums proportional-nums;
@@ -57,6 +61,16 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     overflow-x: hidden;
+  }
+
+  /* One typeface across every page and component, including controls and
+     generated labels. This prevents component styles or browser defaults
+     from introducing a second font. */
+  body,
+  body *,
+  body *::before,
+  body *::after {
+    font-family: var(--font-primary) !important;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -84,8 +98,8 @@
   }
   a { text-decoration: none; color: inherit; }
   img { max-width: 100%; display: block; }
-  button { cursor: pointer; border: none; background: none; font-family: inherit; letter-spacing: -0.01em; }
-  input, select, textarea { font-family: inherit; font-size: inherit; letter-spacing: -0.01em; }
+  button { cursor: pointer; border: none; background: none; font-family: var(--font-primary); letter-spacing: -0.01em; }
+  input, select, textarea { font-family: var(--font-primary); font-size: inherit; letter-spacing: -0.01em; }
   ul, ol { list-style: none; }
   button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
     outline: 3px solid rgba(201,146,61,.35);

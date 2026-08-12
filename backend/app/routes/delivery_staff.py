@@ -203,6 +203,8 @@ async def delivery_action(delivery_id: str, data: DeliveryAction, user=Depends(r
         await notify(db, order["user_id"], titles[data.action],
                      f"Order #{delivery['order_id'][:8]}: {titles[data.action]}.", f"/orders/{delivery['order_id']}")
     if data.action == "complete":
+        from app.services.financial_order_service import finalize_delivered_order_earnings
+        await finalize_delivered_order_earnings(db, delivery["order_id"], now)
         for seller_id in await seller_ids_for_order(db, order):
             await notify(db, seller_id, "Order delivered",
                          f"Order #{delivery['order_id'][:8]} was delivered.", "/seller/orders")

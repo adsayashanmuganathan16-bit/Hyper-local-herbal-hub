@@ -43,8 +43,6 @@ export default function Prescription() {
     <div className="page-wrapper">
       <section className="section" style={{ paddingTop: '40px' }}>
         <div className="container-sm">
-          <h1 className="section-title mb-2">My Prescriptions</h1>
-          <p className="text-gray mb-8">Upload your prescription for medicines that require doctor's approval</p>
 
           {/* Upload Card */}
           <div className="rx-upload-card" onClick={() => fileRef.current?.click()}>

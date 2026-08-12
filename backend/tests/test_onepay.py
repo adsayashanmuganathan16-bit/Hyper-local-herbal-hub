@@ -147,7 +147,7 @@ def test_failed_payment_updates_ledger():
     assert db.audit_logs.inserted[0]["action"] == "payment.failed"
 
 
-def test_successful_payment_creates_payouts_and_notifications(monkeypatch):
+def test_successful_payment_attempts_delivery_gated_payout_and_notifies_seller(monkeypatch):
     db = ProcessingDb()
     calls = []
 
@@ -177,4 +177,4 @@ def test_successful_payment_creates_payouts_and_notifications(monkeypatch):
     assert ("payouts", "ORDER-1") in calls
     assert ("paid", "ORDER-1", "TX-1") in calls
     assert any(call[:2] == ("notify", "seller-1") for call in calls)
-    assert any(call[:2] == ("notify_admins", "Marketplace commission received") for call in calls)
+    assert not any(call[0] == "notify_admins" for call in calls)

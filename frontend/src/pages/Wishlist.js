@@ -50,10 +50,7 @@ export default function Wishlist() {
 
   if (loading) return <Loading />;
   return <div className="page-wrapper"><section className="dashboard-page"><div className="container">
-    <div className="dashboard-header">
-      <div className="dashboard-header-copy"><span className="dashboard-eyebrow">Saved products</span><h1 className="dashboard-title"><FiHeart /> My Wishlist</h1><p className="dashboard-subtitle">Keep your favourite herbal products in one place.</p></div>
-      {!!items.length && <button className="btn btn-secondary" onClick={clear}><FiTrash2 /> Clear Wishlist</button>}
-    </div>
+    {!!items.length && <div className="customer-page-actions"><button className="btn btn-secondary" onClick={clear}><FiTrash2 /> Clear Wishlist</button></div>}
     {items.length ? <div className="med-grid">{items.map((item) => <MedicineCard key={item.id} medicine={item} />)}</div> : <div className="empty-state"><FiHeart size={38} /><h2>Your wishlist is empty</h2><p>Tap the heart on a product to save it here.</p><Link className="btn btn-primary" to="/shop">Browse products</Link></div>}
   </div></section></div>;
 }

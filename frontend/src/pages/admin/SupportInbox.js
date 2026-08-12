@@ -74,18 +74,8 @@ export default function SupportInbox() {
     <div className="page-wrapper">
       <section className="dashboard-page support-inbox-page">
         <div className="container">
-          <div className="dashboard-header">
-            <div className="dashboard-header-copy">
-              <span className="dashboard-eyebrow">Customer support</span>
-              <h1 className="dashboard-title">Support Inbox</h1>
-              <p className="dashboard-subtitle">
-                Review and reply to questions from customers, sellers, and website visitors.
-              </p>
-            </div>
-            <div className="support-inbox-summary">
-              <strong>{openCount}</strong>
-              <span>open in current view</span>
-            </div>
+          <div className="support-inbox-summary support-inbox-summary-standalone">
+            <strong>{openCount}</strong><span>open</span>
           </div>
 
           <div className="support-toolbar">

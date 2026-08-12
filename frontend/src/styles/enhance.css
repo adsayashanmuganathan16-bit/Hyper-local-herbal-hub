@@ -380,7 +380,6 @@
 .newsletter-input { background: transparent; color: #fff; }
 .newsletter-btn { border: 0; border-radius: 9px; background: #d9bc81; }
 
-.shop-header { padding: 30px; border-radius: 22px; background: var(--cream); border: 1px solid var(--cream-deep); }
 .filter-panel { border-color: var(--green-200); box-shadow: var(--shadow-md); }
 .form-input { border-width: 1px; background: #fff; }
 .data-table { background: #fff; }

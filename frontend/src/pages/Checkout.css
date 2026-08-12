@@ -19,19 +19,27 @@
 }
 .payment-options { display: flex; flex-direction: column; gap: var(--space-1); }
 .payment-option {
+  position: relative;
+  width: 100%;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-2);
   padding: var(--space-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
   cursor: pointer;
+  color: var(--ink);
+  background: #fff;
+  text-align: left;
   transition: var(--transition);
 }
 .payment-option:hover { border-color: var(--brand-400); }
 .payment-option.selected { border-color: var(--brand-600); background: var(--brand-50); }
+.payment-option.selected > svg { color: var(--brand-700); }
 .payment-option input { margin-top: 3px; accent-color: var(--green-700); }
 .payment-option div { display: flex; flex-direction: column; gap: 2px; }
+.payment-check { display:grid; width:18px; height:18px; margin-left:auto; flex:0 0 auto; border:2px solid var(--brand-300); border-radius:50%; place-items:center; }
+.payment-option.selected .payment-check { border-color:var(--brand-700); box-shadow:inset 0 0 0 4px #fff; background:var(--brand-700); }
 .checkout-item {
   display: flex;
   justify-content: space-between;

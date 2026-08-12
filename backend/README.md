@@ -23,7 +23,8 @@ backend/
 ├── docs/              # Backend-specific documentation
 ├── scripts/           # Maintenance and database scripts
 ├── tests/             # Pytest suite
-├── .env               # Safe configuration template
+├── .env               # Local configuration (ignored by Git)
+├── .env.example       # Safe configuration template
 ├── pytest.ini         # Backend test discovery/import configuration
 └── requirements.txt
 ```
@@ -42,7 +43,7 @@ Run commands from `backend/`:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
+[ -f .env ] || cp .env.example .env
 ```
 
 Edit `.env` before starting the API. For local development, the minimum useful
@@ -57,6 +58,24 @@ PAYMENT_PROVIDER=mock
 PLANTNET_API_KEY=<your-plantnet-api-key>
 GEMINI_API_KEY=<your-google-ai-studio-api-key>
 ```
+
+### Google sign-in
+
+Create a Google OAuth 2.0 **Web application** client and add
+`http://localhost:3000` as an authorized JavaScript origin. Use the same web
+client ID in both configuration files:
+
+```env
+# backend/.env
+GOOGLE_CLIENT_ID=<web-client-id>.apps.googleusercontent.com
+
+# frontend/.env
+REACT_APP_GOOGLE_CLIENT_ID=<web-client-id>.apps.googleusercontent.com
+```
+
+Restart both servers after changing these values. Google sign-in is hidden
+until the frontend client ID is configured. New users choose Customer or
+Seller before signing in; new sellers continue to business and payment setup.
 
 Generate secrets with:
 
@@ -74,15 +93,22 @@ prevents existing encrypted seller data from being decrypted.
 From the repository root, set up and start the backend with:
 
 ```bash
-cd backend
-python3 -m venv .venv
+cd /home/uki/Music/herbal/backend
+
 source .venv/bin/activate
+
 pip install -r requirements.txt
-cp .env.example .env
+
+[ -f .env ] || cp .env.example .env
+
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
+
+
 
 Edit `.env` with the required configuration before running the final command.
+The guarded copy leaves an existing `.env` untouched. A plain
+`cp .env.example .env` overwrites configured values, so it should only be used
+when intentionally resetting the file.
 After the initial setup, start the backend with:
 
 ```bash

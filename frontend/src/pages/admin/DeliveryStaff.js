@@ -25,7 +25,7 @@ export default function DeliveryStaff() {
   const assign = async (orderId, staffId) => { if (!staffId) return; try { await deliveryApi.assign(orderId, staffId); toast.success('Delivery assigned'); load(); } catch (x) { toast.error(x.response?.data?.detail || 'Assignment failed'); } };
   if (loading) return <Loading />;
   return <div className="page-wrapper"><section className="section"><div className="container">
-    <h1 className="section-title">Herbal Hub Delivery Staff</h1><DeliveryStaffMap staff={staff} />
+    <DeliveryStaffMap staff={staff} />
     <div className="admin-card mt-6"><h3>Create Delivery Staff</h3><form onSubmit={create} className="form-grid">
       {['name','email','phone','password','nic','profile_photo'].map(k => <input key={k} className="form-input" required={k !== 'profile_photo'} type={k === 'password' ? 'password' : 'text'} placeholder={k.replace('_',' ')} value={form[k]} onChange={e => setForm({...form,[k]:e.target.value})} />)}
       <select className="form-input" value={form.vehicle_type} onChange={e => setForm({...form,vehicle_type:e.target.value})}><option>Bike</option><option>Three Wheeler</option><option>Van</option></select>

@@ -1,5 +1,6 @@
 .seller-orders-page { background: #f6f7f9; min-height: 100vh; }
 .seller-order-summary { display: flex; gap: 10px; }
+.seller-order-summary-standalone { justify-content:flex-end; margin-bottom:22px; }
 .seller-order-summary > div { min-width: 104px; padding: 13px 16px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(15,23,42,.04); }
 .seller-order-summary b, .seller-order-summary span { display: block; }
 .seller-order-summary b { color: #172554; font-size: 21px; }
@@ -56,7 +57,7 @@
 .seller-order-detail-panel dl > div:last-child { border-bottom: 0; }
 .seller-order-detail-panel dt { color: #94a3b8; font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .seller-order-detail-panel dd { margin: 0; color: #334155; font-size: 11px; line-height: 1.55; }
-.transaction-id { overflow-wrap: anywhere; font-family: monospace; }
+.transaction-id { overflow-wrap: anywhere; font-family: var(--font-primary); }
 .seller-order-modal-products > div { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
 .seller-order-modal-products > div:last-child { border: 0; }
 .seller-order-modal-products img { width: 48px; height: 48px; border-radius: 9px; object-fit: cover; }

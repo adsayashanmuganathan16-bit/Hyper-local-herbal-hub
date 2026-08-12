@@ -129,6 +129,8 @@ async def _record_verified_payment(db, event, payload: dict, request: Request, s
         return {"status": status}
 
     from app.services.financial_order_service import create_payouts_for_paid_order
+    # This is intentionally a no-op until delivery. The same idempotent
+    # finalizer is called by every delivery completion path.
     allocations = await create_payouts_for_paid_order(
         db,
         event.order_id,
@@ -153,33 +155,14 @@ async def _record_verified_payment(db, event, payload: dict, request: Request, s
     await activate_seller_fulfillments(db, event.order_id)
     await create_financial_notification(order["customer_id"], "Payment received",
                                         f"Payment for order #{event.order_id[:8]} was verified.", f"/orders/{event.order_id}")
-    total_commission = sum(
-        (money(allocation.get("commission_amount", "0")) for allocation in allocations),
-        Decimal("0"),
-    )
-    await notify_admins(
-        db,
-        "Marketplace commission received",
-        f"LKR {total_commission:,.2f} commission from paid order "
-        f"#{event.order_id[:8]} was credited to the platform account.",
-        "/admin/payouts",
-    )
+    if not allocations:
+        allocations = await db.seller_order_allocations.find(
+            {"order_id": event.order_id}
+        ).to_list(length=None)
     for allocation in allocations:
         seller_user_id = allocation["seller_user_id"]
-        delivery_amount = money(allocation.get("delivery_amount", "0"))
-        net_amount = money(allocation.get("net_amount", "0"))
         await create_financial_notification(seller_user_id, "New paid customer order",
                                             f"Order #{event.order_id[:8]} is paid and ready for preparation.", "/seller/orders")
-        delivery_text = (
-            f", including LKR {delivery_amount:,.2f} courier fee"
-            if delivery_amount > 0 else ""
-        )
-        await create_financial_notification(
-            seller_user_id,
-            "Seller balance credited",
-            f"LKR {net_amount:,.2f}{delivery_text} was credited for paid order "
-            f"#{event.order_id[:8]}. Bank transfer status is available in Earnings.",
-        )
     return {"status": "PAID"}
 
 

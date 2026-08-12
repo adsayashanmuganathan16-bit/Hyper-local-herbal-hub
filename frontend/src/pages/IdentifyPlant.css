@@ -212,7 +212,7 @@
 }
 
 .plant-message-copy p[lang="ta"] {
-  font-family: "Noto Sans Tamil", var(--font-body);
+  font-family: var(--font-primary);
   font-weight: 500;
 }
 
@@ -271,7 +271,7 @@
   padding-top: 10px;
   color: var(--green-900);
   border-top: 1px solid rgba(20,61,43,.09);
-  font-family: "Noto Sans Tamil", var(--font-body);
+  font-family: var(--font-primary);
   font-weight: 500;
 }
 

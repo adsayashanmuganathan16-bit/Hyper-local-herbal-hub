@@ -11,6 +11,7 @@
 
 .support-inbox-summary strong { color: var(--green-800); font-size: 25px; line-height: 1; }
 .support-inbox-summary span { margin-top: 5px; color: var(--gray-500); font-size: 11px; }
+.support-inbox-summary-standalone { width:max-content; margin:0 0 18px auto; border-color:var(--green-200); background:#fff; box-shadow:0 8px 20px rgba(20,61,43,.06); }
 
 .support-toolbar {
   display: flex;

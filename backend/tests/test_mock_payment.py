@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.config import settings
-from app.models.order import OrderCreate
+from app.models.order import OrderCreate, OrderItem
 from app.services.mock_payment_service import ACCEPTED_DEMO_CARDS, MockPaymentGateway
 from app.services.payment_gateway_service import get_payment_gateway
 
@@ -53,3 +53,24 @@ def test_mock_transactions_are_unique():
 def test_checkout_requires_explicit_payment_method():
     with pytest.raises(ValidationError):
         OrderCreate(items=[], address={})
+
+
+def checkout_payload(payment_method):
+    return OrderCreate(
+        items=[OrderItem(medicine_id="product", name="Herbal product", price=100, quantity=1)],
+        address={"name": "Customer", "phone": "0771234567", "address_line1": "Main Road",
+                 "city": "Kilinochchi", "state": "Northern", "pincode": "44000"},
+        payment_method=payment_method,
+        customer_latitude=9.38,
+        customer_longitude=80.38,
+    )
+
+
+def test_checkout_accepts_stripe_and_cash_on_delivery():
+    assert checkout_payload("stripe").payment_method.value == "stripe"
+    assert checkout_payload("cod").payment_method.value == "cod"
+
+
+def test_checkout_rejects_unsupported_payment_methods():
+    with pytest.raises(ValidationError):
+        checkout_payload("card")

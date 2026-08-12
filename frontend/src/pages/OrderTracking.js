@@ -156,7 +156,7 @@ export default function OrderTracking() {
 
           <div className="track-header">
             <div>
-              <h1 className="section-title" style={{ marginBottom: 4 }}>Order #{id.slice(0, 8).toUpperCase()}</h1>
+              <strong className="order-reference">Order #{id.slice(0, 8).toUpperCase()}</strong>
               <p className="text-gray text-sm">Placed on {formatDateTime(order.created_at)}</p>
             </div>
             <span className={`badge ${getStatusColor(order.status)}`} style={{ fontSize: 14, padding: '6px 16px' }}>

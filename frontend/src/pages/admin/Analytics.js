@@ -1,174 +1,123 @@
-import React, { useState, useEffect } from 'react';
-import { FiDownload } from 'react-icons/fi';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FiDownload, FiPackage, FiRefreshCw, FiShoppingBag, FiTrendingUp, FiUsers } from 'react-icons/fi';
+import { toast } from 'react-toastify';
 import { analyticsApi } from '../../api/analyticsApi';
 import { formatCurrency } from '../../utils/helpers';
 import Loading from '../../components/Loading';
+
+const periods = [
+  ['7d', '7 Days'], ['30d', '30 Days'], ['90d', '90 Days'], ['1y', '1 Year'],
+];
+
+function EmptyReport({ children }) {
+  return <div className="analytics-empty">{children}</div>;
+}
 
 export default function Analytics() {
   const [salesData, setSalesData] = useState(null);
   const [userData, setUserData] = useState(null);
   const [period, setPeriod] = useState('30d');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [exporting, setExporting] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     setLoading(true);
-    Promise.all([analyticsApi.getSales(period), analyticsApi.getUsers()])
-      .then(([salesRes, userRes]) => {
-        setSalesData(salesRes.data);
-        setUserData(userRes.data);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    setError('');
+    try {
+      const [salesRes, userRes] = await Promise.all([
+        analyticsApi.getSales(period), analyticsApi.getUsers(),
+      ]);
+      setSalesData(salesRes.data);
+      setUserData(userRes.data);
+    } catch (requestError) {
+      setError(requestError.response?.data?.detail || 'Reports could not be loaded.');
+    } finally {
+      setLoading(false);
+    }
   }, [period]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const exportOrders = async () => {
+    try {
+      setExporting(true);
+      const { data } = await analyticsApi.exportOrders('csv');
+      const blob = new Blob([data.data || ''], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `herbal-hub-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Order report downloaded');
+    } catch (requestError) {
+      toast.error(requestError.response?.data?.detail || 'Unable to export the order report');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const summary = salesData?.summary || {};
+  const maxRevenue = useMemo(() => Math.max(...(salesData?.daily_sales || []).map((row) => Number(row.revenue)), 1), [salesData]);
+  const maxUsers = useMemo(() => Math.max(...(userData?.user_growth || []).map((row) => Number(row.count)), 1), [userData]);
+  const maxCategory = useMemo(() => Math.max(...(salesData?.category_distribution || []).map((row) => Number(row.count)), 1), [salesData]);
 
   if (loading) return <Loading />;
 
-  return (
-    <div className="page-wrapper">
-      <section className="section" style={{ paddingTop: '32px' }}>
-        <div className="container">
-          <div className="flex items-center justify-between mb-8" style={{ flexWrap: 'wrap', gap: 16 }}>
-            <h1 className="section-title" style={{ marginBottom: 0 }}>Reports & Analytics</h1>
-            <div className="flex gap-2">
-              {['7d', '30d', '90d', '1y'].map((p) => (
-                <button
-                  key={p}
-                  className={`btn btn-sm ${period === p ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setPeriod(p)}
-                >
-                  {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : p === '90d' ? '90 Days' : '1 Year'}
-                </button>
-              ))}
-              <button
-                className="btn btn-ghost btn-sm"
-                style={{ color: 'var(--green-800)' }}
-                onClick={() => {
-                  analyticsApi.exportOrders('csv').then(({ data }) => {
-                    const blob = new Blob([data.data], { type: 'text/csv' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'orders_export.csv';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  });
-                }}
-              >
-                <FiDownload size={14} /> Export CSV
-              </button>
-            </div>
-          </div>
+  if (error) return <div className="page-wrapper"><section className="dashboard-page"><div className="container">
+    <div className="analytics-error"><FiTrendingUp /><h2>Reports unavailable</h2><p>{error}</p><button className="btn btn-primary" onClick={load}><FiRefreshCw /> Try Again</button></div>
+  </div></section></div>;
 
-          {/* Sales Chart (Simple Bar Representation) */}
-          <div className="admin-card mb-6">
-            <h2 className="admin-card-title">Daily Revenue ({period})</h2>
-            {salesData?.daily_sales?.length > 0 ? (
-              <div className="chart-bars">
-                {salesData.daily_sales.map((day, i) => {
-                  const maxRevenue = Math.max(...salesData.daily_sales.map((d) => d.revenue), 1);
-                  const height = (day.revenue / maxRevenue) * 200;
-                  return (
-                    <div key={i} className="chart-bar-col">
-                      <div className="chart-bar-value">{formatCurrency(day.revenue)}</div>
-                      <div
-                        className="chart-bar"
-                        style={{ height: `${Math.max(4, height)}px` }}
-                        title={`${day._id}: ${formatCurrency(day.revenue)} (${day.orders} orders)`}
-                      />
-                      <div className="chart-bar-label">{day._id?.slice(-5)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-gray text-center" style={{ padding: 40 }}>No sales data for this period</p>
-            )}
-          </div>
-
-          <div className="grid-2">
-            {/* Top Products */}
-            <div className="admin-card">
-              <h2 className="admin-card-title">Top Selling Products</h2>
-              {salesData?.top_medicines?.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {salesData.top_medicines.map((med, i) => (
-                    <div key={i} className="top-product-row">
-                      <div className="top-product-rank">#{i + 1}</div>
-                      <div className="top-product-info">
-                        <span className="font-medium text-sm">{med.name}</span>
-                        <span className="text-xs text-gray">{med.total_sold} sold</span>
-                      </div>
-                      <span className="font-semibold text-sm text-green">{formatCurrency(med.revenue)}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray text-sm text-center" style={{ padding: 20 }}>No data</p>
-              )}
-            </div>
-
-            {/* Category Distribution */}
-            <div className="admin-card">
-              <h2 className="admin-card-title">Category Distribution</h2>
-              {salesData?.category_distribution?.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {salesData.category_distribution.map((cat, i) => {
-                    const maxCount = Math.max(...salesData.category_distribution.map((c) => c.count), 1);
-                    return (
-                      <div key={i} className="cat-dist-row">
-                        <span className="text-sm font-medium" style={{ minWidth: 160 }}>{cat._id?.replace(/_/g, ' ')}</span>
-                        <div className="cat-dist-bar-track">
-                          <div className="cat-dist-bar-fill" style={{ width: `${(cat.count / maxCount) * 100}%` }} />
-                        </div>
-                        <span className="text-sm font-semibold" style={{ minWidth: 40, textAlign: 'right' }}>{cat.count}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-gray text-sm text-center" style={{ padding: 20 }}>No data</p>
-              )}
-            </div>
-
-            {/* User Growth */}
-            <div className="admin-card">
-              <h2 className="admin-card-title">User Growth (6 months)</h2>
-              {userData?.user_growth?.length > 0 ? (
-                <div className="chart-bars" style={{ maxHeight: 180 }}>
-                  {userData.user_growth.map((month, i) => {
-                    const maxCount = Math.max(...userData.user_growth.map((m) => m.count), 1);
-                    const height = (month.count / maxCount) * 140;
-                    return (
-                      <div key={i} className="chart-bar-col">
-                        <div className="chart-bar-value">{month.count}</div>
-                        <div className="chart-bar" style={{ height: `${Math.max(4, height)}px`, background: 'var(--green-500)' }} />
-                        <div className="chart-bar-label">{month._id?.slice(-5)}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-gray text-sm text-center" style={{ padding: 20 }}>No data</p>
-              )}
-            </div>
-
-            {/* User Role Distribution */}
-            <div className="admin-card">
-              <h2 className="admin-card-title">User Roles</h2>
-              {userData?.role_distribution && (
-                <div className="flex flex-col gap-4" style={{ padding: '8px 0' }}>
-                  {Object.entries(userData.role_distribution).map(([role, count]) => (
-                    <div key={role} className="flex items-center justify-between">
-                      <span className="font-medium">{role?.replace(/_/g, ' ').toUpperCase()}</span>
-                      <span className="badge badge-green" style={{ fontSize: 14, padding: '6px 16px' }}>{count}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+  return <div className="page-wrapper"><section className="dashboard-page analytics-page"><div className="container">
+    <div className="analytics-toolbar">
+      <div><span>REPORTING PERIOD</span><strong>{periods.find(([value]) => value === period)?.[1]}</strong></div>
+      <div className="analytics-periods" aria-label="Report period">
+        {periods.map(([value, label]) => <button key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{label}</button>)}
+      </div>
+      <button className="btn btn-secondary" onClick={exportOrders} disabled={exporting}><FiDownload /> {exporting ? 'Preparing…' : 'Export Orders'}</button>
     </div>
-  );
+
+    <div className="analytics-kpis">
+      <article><span className="analytics-kpi-icon revenue"><FiTrendingUp /></span><small>PAID REVENUE</small><strong>{formatCurrency(summary.total_revenue || 0)}</strong><p>Completed payments in this period</p></article>
+      <article><span className="analytics-kpi-icon orders"><FiPackage /></span><small>PAID ORDERS</small><strong>{summary.total_orders || 0}</strong><p>Successfully paid marketplace orders</p></article>
+      <article><span className="analytics-kpi-icon average"><FiShoppingBag /></span><small>AVERAGE ORDER</small><strong>{formatCurrency(summary.average_order_value || 0)}</strong><p>Average value per completed order</p></article>
+      <article><span className="analytics-kpi-icon users"><FiUsers /></span><small>ACTIVE USERS</small><strong>{userData?.summary?.active_users || 0}</strong><p>From {userData?.summary?.total_users || 0} registered accounts</p></article>
+    </div>
+
+    <div className="analytics-panel analytics-revenue-panel">
+      <header><div><span>SALES PERFORMANCE</span><h2>Revenue trend</h2></div><p>Paid orders only · {summary.items_sold || 0} items sold</p></header>
+      {salesData?.daily_sales?.length ? <div className="analytics-chart" role="img" aria-label="Revenue by date">
+        {salesData.daily_sales.map((day) => <div key={day._id} className="analytics-bar-col">
+          <span>{formatCurrency(day.revenue)}</span>
+          <div className="analytics-bar-track"><i style={{ height: `${Math.max(3, (Number(day.revenue) / maxRevenue) * 100)}%` }} title={`${day.orders} paid orders`} /></div>
+          <small>{period === '1y' ? day._id : day._id?.slice(5)}</small>
+        </div>)}
+      </div> : <EmptyReport>No paid sales were recorded during this period.</EmptyReport>}
+    </div>
+
+    <div className="analytics-grid">
+      <div className="analytics-panel"><header><div><span>PRODUCT PERFORMANCE</span><h2>Top-selling products</h2></div></header>
+        {salesData?.top_medicines?.length ? <div className="analytics-ranking">{salesData.top_medicines.slice(0, 6).map((product, index) => <div key={product._id || product.name}>
+          <b>{String(index + 1).padStart(2, '0')}</b><p><strong>{product.name || 'Unnamed product'}</strong><small>{product.total_sold || 0} units sold</small></p><span>{formatCurrency(product.revenue || 0)}</span>
+        </div>)}</div> : <EmptyReport>No paid product sales yet.</EmptyReport>}
+      </div>
+
+      <div className="analytics-panel"><header><div><span>CATALOGUE MIX</span><h2>Products by category</h2></div></header>
+        {salesData?.category_distribution?.length ? <div className="analytics-distribution">{salesData.category_distribution.map((category) => <div key={category._id || 'uncategorized'}>
+          <p><span>{String(category._id || 'Uncategorized').replaceAll('_', ' ')}</span><strong>{category.count}</strong></p><div><i style={{ width: `${(category.count / maxCategory) * 100}%` }} /></div>
+        </div>)}</div> : <EmptyReport>No active products are available.</EmptyReport>}
+      </div>
+
+      <div className="analytics-panel"><header><div><span>ACCOUNT GROWTH</span><h2>New users by month</h2></div><p>{userData?.summary?.new_users_6_months || 0} in six months</p></header>
+        {userData?.user_growth?.length ? <div className="analytics-mini-chart">{userData.user_growth.map((month) => <div key={month._id}><span>{month.count}</span><i style={{ height: `${Math.max(4, (month.count / maxUsers) * 100)}%` }} /><small>{month._id}</small></div>)}</div> : <EmptyReport>No new accounts in this period.</EmptyReport>}
+      </div>
+
+      <div className="analytics-panel"><header><div><span>PLATFORM AUDIENCE</span><h2>Users by role</h2></div></header>
+        <div className="analytics-roles">{Object.entries(userData?.role_distribution || {}).sort((a, b) => b[1] - a[1]).map(([role, count]) => <div key={role}><span>{role.replaceAll('_', ' ')}</span><strong>{count}</strong></div>)}</div>
+      </div>
+    </div>
+  </div></section></div>;
 }

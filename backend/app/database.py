@@ -11,11 +11,34 @@ logger = logging.getLogger(__name__)
 async def connect_db():
     """Initialize MongoDB connection."""
     global client
-    client = AsyncIOMotorClient(settings.MONGODB_URI)
+    logger.info("Connecting to MongoDB database '%s'...", settings.DB_NAME)
+    new_client = None
+    try:
+        new_client = AsyncIOMotorClient(settings.MONGODB_URI)
+        # Force a network round trip. Creating Motor's client alone does not
+        # establish a connection, so without this ping a misleading startup
+        # message could be printed while MongoDB is unavailable.
+        await new_client.admin.command("ping")
+    except Exception as exc:
+        logger.error("MongoDB connection failed: %s", exc)
+        if new_client:
+            new_client.close()
+        client = None
+        raise
+
+    client = new_client
+    logger.info("MongoDB connected successfully (database: %s)", settings.DB_NAME)
     # Create indexes on startup
     db = client[settings.DB_NAME]
     await db.users.create_index("email", unique=True)
-    await db.users.create_index("phone", unique=True)
+    # OAuth accounts do not have a phone number until profile completion.
+    # A non-sparse unique index treats every missing phone as the same null
+    # value, allowing only one such account, so migrate the legacy index.
+    user_indexes = await db.users.index_information()
+    phone_index = user_indexes.get("phone_1")
+    if phone_index and not phone_index.get("sparse"):
+        await db.users.drop_index("phone_1")
+    await db.users.create_index("phone", unique=True, sparse=True)
     await db.users.create_index("reset_token", sparse=True)
     await db.users.create_index("verification_token", sparse=True)
     await db.medicines.create_index("name")
@@ -93,6 +116,7 @@ async def connect_db():
     await db.sellers.create_index("user_id", unique=True)
     await db.sellers.create_index("email", unique=True)
     await db.seller_bank_accounts.create_index("seller_id", unique=True)
+    await db.user_bank_accounts.create_index("user_id", unique=True)
     await db.wishlists.create_index([("user_id", 1), ("medicine_id", 1)], unique=True)
     await db.wishlists.create_index([("user_id", 1), ("created_at", -1)])
     await db.financial_orders.create_index("order_id", unique=True)
@@ -125,6 +149,13 @@ async def connect_db():
         partialFilterExpression={"stripe_checkout_session_id": {"$type": "string"}},
     )
     await db.payouts.create_index([("seller_id", 1), ("status", 1)])
+    # Legacy manual payouts may legitimately reuse a bank reference. New
+    # application-generated PAY-* references use a dedicated unique field so
+    # existing financial history never prevents startup migrations.
+    await db.payouts.create_index(
+        "payout_reference", unique=True,
+        partialFilterExpression={"payout_reference": {"$type": "string"}},
+    )
     await db.payout_attempts.create_index([("payout_id", 1), ("attempt_number", 1)], unique=True)
     commission_indexes = await db.commission_settings.index_information()
     for index_name, index_spec in commission_indexes.items():
@@ -168,26 +199,22 @@ async def connect_db():
         "service_area_id": str(active_area["_id"]), "updated_at": utc_now()}})
     from app.utils.helpers import hash_password
     now = utc_now()
-    demo_accounts = [
-        {"name": "Herbal Hub Admin", "email": "admin@herbalhub.com", "phone": "0700000001", "password": "Admin@123", "role": "admin"},
-        {"name": "Demo Seller", "email": "seller@herbalhub.com", "phone": "0700000002", "password": "Seller@123", "role": "seller",
-         "business_name": "Herbal Hub Demo Store", "store_name": "Herbal Hub Demo Store"},
-        {"name": "Demo Customer", "email": "customer@herbalhub.com", "phone": "0700000003", "password": "Customer@123", "role": "customer"},
-    ]
-    for account in demo_accounts:
-        if await db.users.find_one({"email": account["email"]}):
-            continue
-        password = account.pop("password")
-        result = await db.users.insert_one({**account, "password": hash_password(password), "is_active": True,
-            "email_verified": True, "address": None, "profile_image": None, "created_at": now, "updated_at": now})
-        if account["role"] == "seller" and not await db.sellers.find_one({"user_id": str(result.inserted_id)}):
-            area = await db.service_areas.find_one({"is_active": True})
-            await db.sellers.insert_one({"user_id": str(result.inserted_id), "name": account["name"],
-                "email": account["email"], "phone": account["phone"], "business_name": account["business_name"],
-                "store_name": account["store_name"], "address": {"address_line1": "Kilinochchi Town"},
-                "latitude": settings.INITIAL_SERVICE_AREA_LATITUDE, "longitude": settings.INITIAL_SERVICE_AREA_LONGITUDE,
-                "service_area_id": str(area["_id"]), "approval_status": "APPROVED", "created_at": now, "updated_at": now})
-    logger.info("Connected to MongoDB")
+    admin_account = {"name": "Adsaya Shanmuganathan", "email": "adsayashanmuganathan16@gmail.com",
+                     "phone": "0700000001", "password": "Adsaya#16", "role": "admin"}
+    existing_admin = await db.users.find_one({"email": admin_account["email"]})
+    if not existing_admin:
+        existing_admin = await db.users.find_one({"email": "admin@herbalhub.com", "role": "admin"})
+    if existing_admin:
+        await db.users.update_one({"_id": existing_admin["_id"]}, {"$set": {
+            "name": admin_account["name"], "email": admin_account["email"],
+            "password": hash_password(admin_account["password"]), "role": "admin",
+            "is_active": True, "email_verified": True, "updated_at": now,
+        }})
+    else:
+        await db.users.insert_one({**admin_account, "password": hash_password(admin_account["password"]),
+            "is_active": True, "email_verified": True, "address": None, "profile_image": None,
+            "created_at": now, "updated_at": now})
+    logger.info("MongoDB startup initialization completed")
 
 
 async def disconnect_db():

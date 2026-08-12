@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FiUser, FiMail, FiPhone, FiMapPin, FiCamera, FiSave, FiLock } from 'react-icons/fi';
+import React, { useEffect, useState } from 'react';
+import { FiUser, FiMail, FiPhone, FiMapPin, FiCamera, FiSave, FiLock, FiCreditCard } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/authApi';
 import { toast } from 'react-toastify';
@@ -20,6 +20,14 @@ export default function Profile() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
   const [changingPw, setChangingPw] = useState(false);
+  const [bankForm, setBankForm] = useState({ bank_name: '', branch: '', account_holder_name: '', account_number: '' });
+  const [savingBank, setSavingBank] = useState(false);
+  const supportsBankProfile = ['customer', 'admin'].includes(user?.role);
+
+  useEffect(() => {
+    if (!supportsBankProfile) return;
+    authApi.getBankAccount().then(({ data }) => data.bank_account && setBankForm(data.bank_account)).catch(() => {});
+  }, [supportsBankProfile]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const handlePwChange = (e) => setPwForm({ ...pwForm, [e.target.name]: e.target.value });
@@ -82,12 +90,22 @@ export default function Profile() {
     }
   };
 
+  const handleBankSave = async (event) => {
+    event.preventDefault();
+    if (bankForm.account_number.includes('*')) return toast.error('Enter the full account number when updating bank details');
+    try {
+      setSavingBank(true);
+      const { data } = await authApi.updateBankAccount(bankForm);
+      setBankForm(data.bank_account);
+      toast.success(data.message);
+    } catch (error) { toast.error(error.response?.data?.detail || 'Unable to save bank account'); }
+    finally { setSavingBank(false); }
+  };
+
   return (
     <div className="page-wrapper">
       <section className="section" style={{ paddingTop: '40px' }}>
         <div className="container-sm">
-          <h1 className="section-title mb-6">My Profile</h1>
-
           <div className="profile-card">
             <div className="profile-avatar-section">
               <div
@@ -148,6 +166,14 @@ export default function Profile() {
               </button>
             </form>
           </div>
+
+          {supportsBankProfile && <div className="profile-card mt-6">
+            <h2 className="font-display mb-2" style={{ fontSize: 20, color: 'var(--green-900)', padding: '24px 32px 0' }}><FiCreditCard size={17} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />Bank Account</h2>
+            <p className="text-gray text-sm" style={{ padding: '0 32px' }}>Your account number is encrypted and available only to authorized administrators and relevant sellers.</p>
+            <form onSubmit={handleBankSave} className="profile-form"><div className="grid-2">
+              {[['bank_name', 'Bank Name'], ['branch', 'Branch'], ['account_holder_name', 'Account Holder Name'], ['account_number', 'Account Number']].map(([key, label]) => <div className="form-group" key={key}><label className="form-label">{label}</label><input className="form-input" required minLength={key === 'account_number' ? 6 : 2} value={bankForm[key]} autoComplete="off" onFocus={() => key === 'account_number' && bankForm[key].includes('*') && setBankForm({ ...bankForm, [key]: '' })} onChange={(event) => setBankForm({ ...bankForm, [key]: event.target.value })}/></div>)}
+            </div><button className="btn btn-primary" disabled={savingBank}><FiSave size={16}/> {savingBank ? 'Saving…' : 'Save Bank Account'}</button></form>
+          </div>}
 
           <div className="profile-card mt-6">
             <h2 className="font-display mb-4" style={{ fontSize: 20, color: 'var(--green-900)' }}>

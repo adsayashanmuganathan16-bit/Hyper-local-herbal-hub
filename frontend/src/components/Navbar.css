@@ -131,6 +131,13 @@
     align-items: center;
     justify-content: space-between;
   }
+  .profile-dropdown-header {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+  }
+  .profile-dropdown-header p { width: 100%; margin: 0; overflow-wrap: anywhere; }
   .dropdown-body { max-height: 320px; overflow-y: auto; }
   .dropdown-item {
     display: flex;

@@ -338,3 +338,18 @@ body,
   }
 .pin-drop-marker { width:38px; height:38px; display:grid; place-items:center; border-radius:50% 50% 50% 0; transform:rotate(-45deg); background:#176b45; color:white; border:3px solid white; box-shadow:0 3px 12px rgba(0,0,0,.35); font-size:18px; }
 .pin-drop-marker::first-letter { transform:rotate(45deg); }
+
+.role-welcome {
+  width: min(1180px, calc(100% - 40px));
+  margin: 24px auto 0;
+  padding: 18px 24px;
+  color: #fff;
+  background: linear-gradient(135deg, #174f37, #287651);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 18px;
+  box-shadow: 0 14px 34px rgba(25, 83, 58, .16);
+}
+.role-welcome h1 { margin: 0; color: #fff; font-family: var(--font-display); font-size: clamp(22px, 3vw, 30px); }
+.role-welcome-admin { background: linear-gradient(135deg, #143f2f, #235f46); }
+.role-welcome-seller { background: linear-gradient(135deg, #1b5b3d, #34835b); }
+@media (max-width: 640px) { .role-welcome { width: calc(100% - 24px); padding: 16px 18px; } }

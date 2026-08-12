@@ -2,9 +2,12 @@ import api from './axios';
 
 export const authApi = {
   login: (data) => api.post('/api/auth/login', data),
+  googleLogin: (credential, role) => api.post('/api/auth/google', { credential, role }),
   register: (data) => api.post('/api/auth/register', data),
   getProfile: () => api.get('/api/auth/me'),
   updateProfile: (data) => api.put('/api/auth/profile', data),
+  getBankAccount: () => api.get('/api/auth/profile/bank-account'),
+  updateBankAccount: (data) => api.put('/api/auth/profile/bank-account', data),
   forgotPassword: (email) => api.post('/api/auth/forgot-password', { email }),
   resetPassword: (token, new_password) =>
     api.post('/api/auth/reset-password', { token, new_password }),

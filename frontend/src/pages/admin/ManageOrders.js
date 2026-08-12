@@ -28,7 +28,6 @@ export default function ManageOrders() {
     <div className="page-wrapper">
       <section className="section" style={{ paddingTop: '32px' }}>
         <div className="container">
-          <h1 className="section-title mb-6">Manage Orders</h1>
           <div className="tab-nav" style={{ marginBottom: 24 }}>
             <button className={`tab-btn ${!filter ? 'active' : ''}`} onClick={() => setFilter('')}>All</button>
             {STATUSES.map((s) => (

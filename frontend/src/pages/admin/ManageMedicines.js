@@ -144,8 +144,6 @@ export default function ManageMedicines({ sellerMode = false, initialAddOpen = f
         <div className="container">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="section-title" style={{ marginBottom: 4 }}>{sellerMode ? 'My Products' : 'Manage Medicines'}</h1>
-              {sellerMode && <p className="text-gray">Add products and manage your inventory</p>}
             </div>
             <button className="btn btn-primary btn-sm" onClick={() => { resetForm(); setEditId(null); setShowModal(true); }}>
               <FiPlus size={14} /> Add Product

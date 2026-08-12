@@ -7,6 +7,8 @@ import { notificationApi } from '../api/notificationApi';
 import SearchBar from './SearchBar';
 import { formatDateTime } from '../utils/helpers';
 import { wishlistIds } from '../utils/wishlist';
+import { adminNavigation } from './AdminSidebar';
+import { customerNavigation, sellerNavigation } from './WorkspaceSidebar';
 
 const LOGO_URL = process.env.PUBLIC_URL + '/logo.png';
 
@@ -189,7 +191,7 @@ export default function Navbar() {
                 </button>
                 {profileOpen && (
                   <div className="dropdown-panel profile-dropdown animate-slideDown">
-                    <div className="dropdown-header">
+                    <div className="dropdown-header profile-dropdown-header">
                       <p className="font-semibold">{isSeller ? (user?.store_name || user?.business_name || 'Seller Company') : user?.name}</p>
                       <p className="text-gray text-xs">{user?.email}</p>
                     </div>
@@ -198,47 +200,20 @@ export default function Navbar() {
                         <FiUser size={16} /> My Profile
                       </Link>
                       {isCustomer && <Link to="/orders" className="dropdown-item" onClick={() => setProfileOpen(false)}>
-                        <FiPackage size={16} /> My Orders
-                      </Link>}
-                      {isCustomer && <Link to="/wishlist" className="dropdown-item" onClick={() => setProfileOpen(false)}>
-                        <FiHeart size={16} /> My Wishlist
-                      </Link>}
-                      {isCustomer && <Link to="/prescriptions" className="dropdown-item" onClick={() => setProfileOpen(false)}>
-                        <FiFileText size={16} /> Prescriptions
+                        <FiPackage size={16} /> Open Customer Account
                       </Link>}
                       {isAdmin && (
                         <>
                           <div className="divider" style={{ margin: '8px 0' }} />
-                          <Link to="/admin" className="dropdown-item" onClick={() => setProfileOpen(false)}>
-                            <FiBarChart2 size={16} /> Admin Dashboard
+                          <Link to="/admin/dashboard" className="dropdown-item" onClick={() => setProfileOpen(false)}>
+                            <FiGrid size={16} /> Open Admin Center
                           </Link>
-                          <Link to="/admin/medicines" className="dropdown-item" onClick={() => setProfileOpen(false)}>
-                            <FiGrid size={16} /> Manage Medicines
-                          </Link>
-                          <Link to="/admin/orders" className="dropdown-item" onClick={() => setProfileOpen(false)}>
-                            <FiPackage size={16} /> Manage Orders
-                          </Link>
-                          <Link to="/admin/users" className="dropdown-item" onClick={() => setProfileOpen(false)}>
-                            <FiUsers size={16} /> Manage Users
-                          </Link>
-                          <Link to="/admin/sellers" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiUsers size={16} /> Manage Sellers</Link>
-                          <Link to="/admin/payouts" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiFileText size={16} /> Seller Payouts</Link>
-                          <Link to="/admin/payments" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiDollarSign size={16} /> Payments</Link>
-                          <Link to="/admin/reviews" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiStar size={16} /> Customer Reviews</Link>
-                          <Link to="/admin/subscribers" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiMail size={16} /> Email Subscribers</Link>
-                          <Link to="/admin/support" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiMail size={16} /> Support Inbox</Link>
                         </>
                       )}
                       {isSeller && (
                         <>
                           <div className="divider" style={{ margin: '8px 0' }} />
-                          <Link to="/seller" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiBarChart2 size={16} /> Seller Dashboard</Link>
-                          <Link to="/seller/products" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiGrid size={16} /> My Products</Link>
-                          <Link to="/seller/orders" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiPackage size={16} /> Seller Orders</Link>
-                          <Link to="/seller/customers" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiUsers size={16} /> My Customers</Link>
-                          <Link to="/seller/earnings" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiBarChart2 size={16} /> Earnings & Payouts</Link>
-                          <Link to="/seller/payment-setup" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiFileText size={16} /> Payment Setup</Link>
-                          <Link to="/seller/reviews" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiStar size={16} /> Customer Reviews</Link>
+                          <Link to="/seller/dashboard" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiBarChart2 size={16} /> Open Seller Center</Link>
                         </>
                       )}
                       {isDeliveryStaff && <Link to="/delivery-staff" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiPackage size={16} /> Assigned Deliveries</Link>}
@@ -275,13 +250,9 @@ export default function Navbar() {
           ))}
           {isAuthenticated ? (
             <>
-              {isCustomer && <>
-                <Link to="/cart" className="mobile-menu-link" onClick={() => setMenuOpen(false)}>Cart ({totalItems})</Link>
-                <Link to="/orders" className="mobile-menu-link" onClick={() => setMenuOpen(false)}>My Orders</Link>
-                <Link to="/prescriptions" className="mobile-menu-link" onClick={() => setMenuOpen(false)}>Prescriptions</Link>
-              </>}
-              {isAdmin && <Link to="/admin/dashboard" className="mobile-menu-link" onClick={() => setMenuOpen(false)}>Admin Dashboard</Link>}
-              {isSeller && <Link to="/seller/dashboard" className="mobile-menu-link" onClick={() => setMenuOpen(false)}>Seller Dashboard</Link>}
+              {isAdmin && adminNavigation.map(({ to, label }) => <Link key={to} to={to} className="mobile-menu-link" onClick={() => setMenuOpen(false)}>{label}</Link>)}
+              {isSeller && sellerNavigation.map(({ to, label }) => <Link key={to} to={to} className="mobile-menu-link" onClick={() => setMenuOpen(false)}>{label}</Link>)}
+              {isCustomer && customerNavigation.map(({ to, label }) => <Link key={to} to={to} className="mobile-menu-link" onClick={() => setMenuOpen(false)}>{label}</Link>)}
               {isDeliveryStaff && <Link to="/delivery-staff" className="mobile-menu-link" onClick={() => setMenuOpen(false)}>Delivery Dashboard</Link>}
               <button className="mobile-menu-link logout" onClick={handleLogout}>Logout</button>
             </>

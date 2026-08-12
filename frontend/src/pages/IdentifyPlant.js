@@ -63,7 +63,7 @@ export default function IdentifyPlant() {
       <section className="identify-hero">
         <div className="container identify-hero-inner">
           <span className="identify-eyebrow"><FiSearch /> Plant identification</span>
-          <h1>Discover the plant in front of you</h1>
+          <h1>Discover the plant infront of you</h1>
           <p>
             Upload a clear photo of a leaf, flower, fruit, or bark and receive
             an AI-powered identification in seconds.

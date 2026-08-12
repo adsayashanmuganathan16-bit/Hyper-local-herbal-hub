@@ -33,8 +33,8 @@ export default function ManageUsers() {
     if (!window.confirm(`Remove ${user.name}? Their order and payment history will be preserved.`)) return;
     try {
       await adminApi.removeUser(user.id);
-      toast.success('User removed');
-      setUsers((prev) => prev.map((item) => item.id === user.id ? { ...item, is_active: false, removed_at: new Date().toISOString() } : item));
+      toast.success('User deleted');
+      setUsers((prev) => prev.filter((item) => item.id !== user.id));
     } catch (error) { toast.error(error.response?.data?.detail || 'Remove failed'); }
   };
 
@@ -42,8 +42,6 @@ export default function ManageUsers() {
     <div className="page-wrapper">
       <section className="section" style={{ paddingTop: '32px' }}>
         <div className="container">
-          <h1 className="section-title mb-6">Manage Users</h1>
-
           <div className="flex gap-3 mb-6" style={{ flexWrap: 'wrap' }}>
             <div className="input-icon-wrap" style={{ maxWidth: 300, flex: 1 }}>
               <FiSearch size={16} className="input-icon" />
@@ -54,7 +52,6 @@ export default function ManageUsers() {
               <option value="customer">Customer</option>
               <option value="admin">Admin</option>
               <option value="seller">Seller</option>
-              <option value="delivery_partner">Delivery Partner</option>
             </select>
           </div>
 
@@ -67,6 +64,7 @@ export default function ManageUsers() {
                       <th>User</th>
                       <th>Phone</th>
                       <th>Role</th>
+                      <th>Bank Account</th>
                       <th>Joined</th>
                       <th>Status</th>
                       <th>Actions</th>
@@ -74,7 +72,7 @@ export default function ManageUsers() {
                   </thead>
                   <tbody>
                     {users.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center text-gray" style={{ padding: 40 }}>No users found</td></tr>
+                      <tr><td colSpan={7} className="text-center text-gray" style={{ padding: 40 }}>No users found</td></tr>
                     ) : users.map((user) => (
                       <tr key={user.id}>
                         <td>
@@ -100,6 +98,7 @@ export default function ManageUsers() {
                             {user.role?.replace(/_/g, ' ').toUpperCase()}
                           </span>
                         </td>
+                        <td className="text-sm">{user.bank_account ? <><strong>{user.bank_account.account_number}</strong><br/><span className="text-xs text-gray">{user.bank_account.bank_name} · {user.bank_account.account_holder_name}</span></> : '—'}</td>
                         <td className="text-sm text-gray">{formatDate(user.created_at)}</td>
                         <td>
                           <span className={`badge ${user.is_active ? 'badge-green' : 'badge-red'}`}>

@@ -1,1 +1,9 @@
 .table-scroll { overflow-x: auto; }
+.payout-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin:20px 0 14px; }
+.payout-filters { display:flex; gap:8px; flex-wrap:wrap; }
+.payout-filters button { border:1px solid #cfded4; background:#fff; color:#40594b; border-radius:999px; padding:8px 16px; text-transform:capitalize; font-weight:700; cursor:pointer; }
+.payout-filters button.active { background:#245f43; border-color:#245f43; color:#fff; }
+.payout-search { width:min(340px, 100%); }
+.payout-actions { display:flex; gap:8px; align-items:center; white-space:nowrap; }
+.dashboard-status.status-processing { background:#eef2f5; color:#4f6370; }
+@media (max-width: 760px) { .payout-toolbar { align-items:stretch; flex-direction:column; } .payout-search { width:100%; } }

@@ -12,6 +12,29 @@ from app.utils.helpers import serialize_doc, serialize_medicine
 router = APIRouter(prefix="/api/seller", tags=["Seller"])
 
 
+def seller_order_view(order: dict) -> dict:
+    """Return only the portion of a marketplace order belonging to this seller."""
+    view = dict(order)
+    items = [dict(item) for item in order.get("items", [])]
+    seller_total = round(sum(
+        float(item.get("price", 0)) * int(item.get("quantity", 0)) for item in items
+    ), 2)
+    view["items"] = items
+    view["total_amount"] = seller_total
+    view["final_amount"] = seller_total
+    view["seller_total"] = seller_total
+    view["discount"] = 0
+    view["delivery_charge"] = 0
+    payment = order.get("payment") or {}
+    view["payment"] = {key: payment.get(key) for key in ("status", "paid_at") if payment.get(key) is not None}
+    for private_field in (
+        "seller_id", "seller_ids", "seller_location", "seller_locations", "user_id",
+        "payment_id", "stripe_checkout_session_id", "deleted_by_sellers",
+    ):
+        view.pop(private_field, None)
+    return serialize_doc(view)
+
+
 class CourierDispatch(BaseModel):
     courier_company: str = Field(min_length=2, max_length=120)
     tracking_number: str = Field(min_length=2, max_length=120)
@@ -50,7 +73,7 @@ async def _seller_orders(db, seller_id: str):
 @router.get("/orders")
 async def seller_orders(current_user: dict = Depends(require_seller)):
     orders = await _seller_orders(get_db(), current_user["_id"])
-    return {"items": [serialize_doc(o) for o in orders], "total": len(orders)}
+    return {"items": [seller_order_view(order) for order in orders], "total": len(orders)}
 
 
 @router.delete("/orders/{order_id}")
@@ -131,9 +154,17 @@ async def seller_customers(include_archived: bool = Query(False), current_user: 
     users = await db.users.find({"_id": {"$in": customer_ids}, "role": "customer"},
                                 {"name": 1, "email": 1, "phone": 1, "is_active": 1}).to_list(length=None)
     items = []
+    from app.services.financial_crypto import decrypt_sensitive
     for user in users:
         customer_id = str(user["_id"])
-        items.append(serialize_doc({**user, **summaries[customer_id], "archived": customer_id in archived_ids}))
+        bank = await db.user_bank_accounts.find_one({"user_id": customer_id})
+        item = serialize_doc({**user, **summaries[customer_id], "archived": customer_id in archived_ids})
+        item["bank_account"] = None if not bank else {
+            "bank_name": bank["bank_name"], "branch": bank["branch"],
+            "account_holder_name": bank["account_holder_name"],
+            "account_number": decrypt_sensitive(bank["account_number_encrypted"]),
+        }
+        items.append(item)
     items.sort(key=lambda row: row.get("last_order_at") or datetime.min, reverse=True)
     return {"items": items, "total": len(items)}
 
@@ -204,6 +235,8 @@ async def seller_parcel_delivered(order_id: str, current_user: dict = Depends(re
     order = await db.orders.find_one({"_id": ObjectId(order_id)})
     if not remaining:
         await db.orders.update_one({"_id": order["_id"]}, {"$set": {"status": "delivered", "updated_at": now}})
+        from app.services.financial_order_service import finalize_delivered_order_earnings
+        await finalize_delivered_order_earnings(db, order_id, now)
     from app.services.notification_realtime import create_notification, notify_admins
     await create_notification(db, order["user_id"], "Parcel delivered",
         f"A seller parcel for order #{order_id[:8]} was delivered.", f"/orders/{order_id}", "delivery")
@@ -230,5 +263,5 @@ async def seller_dashboard(current_user: dict = Depends(require_seller)):
         "total_orders": len(orders),
         "units_sold": units_sold,
         "total_revenue": revenue,
-        "recent_orders": [serialize_doc(o) for o in orders[:6]],
+        "recent_orders": [seller_order_view(order) for order in orders[:6]],
     }

@@ -73,6 +73,15 @@ export function AuthProvider({ children }) {
     [persist]
   );
 
+  const googleLogin = useCallback(
+    async (credential, role) => {
+      const { data } = await authApi.googleLogin(credential, role);
+      persist(data.access_token, data.user, data.refresh_token);
+      return data.user;
+    },
+    [persist]
+  );
+
   // Exchange the stored refresh token for a fresh access token.
   const refreshAccessToken = useCallback(async () => {
     const refreshToken = localStorage.getItem(REFRESH_KEY);
@@ -106,6 +115,7 @@ export function AuthProvider({ children }) {
     user,
     setUser,
     login,
+    googleLogin,
     register,
     logout,
     refreshAccessToken,

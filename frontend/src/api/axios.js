@@ -22,6 +22,7 @@ const api = {
   get: (url, config = {}) => useRealBackend ? realApi.get(url, config) : handleRequest('GET', url, config),
   post: (url, data, config = {}) => useRealBackend ? realApi.post(url, data, config) : handleRequest('POST', url, { ...config, data }),
   put: (url, data, config = {}) => useRealBackend ? realApi.put(url, data, config) : handleRequest('PUT', url, { ...config, data }),
+  patch: (url, data, config = {}) => useRealBackend ? realApi.patch(url, data, config) : handleRequest('PATCH', url, { ...config, data }),
   delete: (url, config = {}) => useRealBackend ? realApi.delete(url, config) : handleRequest('DELETE', url, config),
 };
 

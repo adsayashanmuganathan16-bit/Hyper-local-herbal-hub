@@ -36,26 +36,97 @@ def point_in_area(latitude, longitude, properties, area):
     return any(normalized(name) in candidate for name in area.get("accepted_names", []))
 
 
-async def geocode_address(address):
+def feature_location(feature):
+    longitude, latitude = feature["geometry"]["coordinates"]
+    properties = feature.get("properties", {})
+    return {"latitude": latitude, "longitude": longitude, "formatted": properties.get("formatted"),
+            "properties": properties}
+
+
+def matching_location(features, areas, fallback=True):
+    """Prefer a geocoder candidate inside an active delivery area."""
+    locations = [feature_location(feature) for feature in features]
+    return next((location for location in locations if any(
+        point_in_area(location["latitude"], location["longitude"], location["properties"], area)
+        for area in areas
+    )), locations[0] if fallback and locations else None)
+
+
+def declared_service_area_location(address, areas):
+    """Use the configured center when the provider cannot resolve an exact service-area locality."""
+    declared_names = {
+        normalized(address.get(key))
+        for key in ("address_line1", "address_line2", "city", "state")
+        if address.get(key)
+    }
+    for area in areas:
+        accepted_names = {normalized(name) for name in area.get("accepted_names", [])}
+        accepted_names.add(normalized(area.get("name")))
+        latitude = area.get("center_latitude")
+        longitude = area.get("center_longitude")
+        # Local address spelling often includes suffixes such as "town" or
+        # "district". Accept a configured area name contained in a declared
+        # address component (or vice versa) instead of requiring exact text.
+        declared_in_area = any(
+            declared and accepted and (declared in accepted or accepted in declared)
+            for declared in declared_names
+            for accepted in accepted_names
+        )
+        if declared_in_area and latitude is not None and longitude is not None:
+            city = address.get("city", "")
+            return {
+                "latitude": latitude,
+                "longitude": longitude,
+                "formatted": ", ".join(filter(None, [address.get("address_line1"), city,
+                                                       address.get("state"), address.get("pincode")])),
+                "properties": {
+                    "city": city,
+                    "county": area.get("name", ""),
+                    "state": address.get("state", ""),
+                    "postcode": address.get("pincode", ""),
+                    "location_source": "configured_service_area",
+                },
+            }
+    return None
+
+
+async def geocode_address(address, areas=None):
     if not settings.GEOAPIFY_API_KEY:
         raise HTTPException(503, "Geoapify geocoding is not configured")
-    text = ", ".join(filter(None, [address.get("address_line1"), address.get("address_line2"),
-                                    address.get("city"), address.get("state"), address.get("pincode"), "Sri Lanka"]))
+    address_parts = [address.get("address_line1"), address.get("address_line2"), address.get("city"),
+                     address.get("state"), address.get("pincode"), "Sri Lanka"]
+    queries = [
+        ", ".join(filter(None, address_parts)),
+        ", ".join(filter(None, [address.get("pincode"), address.get("city"),
+                                  address.get("state"), "Sri Lanka"])),
+        ", ".join(filter(None, [address.get("city"), "District", "Sri Lanka"])),
+    ]
+    queries = list(dict.fromkeys(query for query in queries if query.strip(", ")))
     try:
         async with httpx.AsyncClient(timeout=12) as client:
-            response = await client.get("https://api.geoapify.com/v1/geocode/search", params={
-                "text": text, "format": "geojson", "limit": 1, "filter": "countrycode:lk",
-                "apiKey": settings.GEOAPIFY_API_KEY,
-            })
-            response.raise_for_status()
+            centered_area = next((area for area in (areas or [])
+                                  if area.get("center_latitude") is not None
+                                  and area.get("center_longitude") is not None), None)
+            features = []
+            for query in queries:
+                params = {"text": query, "format": "geojson", "limit": 5,
+                          "filter": "countrycode:lk", "apiKey": settings.GEOAPIFY_API_KEY}
+                if centered_area:
+                    params["bias"] = (f"proximity:{centered_area['center_longitude']},"
+                                      f"{centered_area['center_latitude']}")
+                response = await client.get("https://api.geoapify.com/v1/geocode/search", params=params)
+                response.raise_for_status()
+                features.extend(response.json().get("features", []))
+                if matching_location(features, areas or [], fallback=False):
+                    break
     except httpx.HTTPError as exc:
         raise HTTPException(503, "Delivery address validation is temporarily unavailable") from exc
-    feature = response.json().get("features", [None])[0]
-    if not feature:
+    location = matching_location(features, areas or [])
+    if not location:
+        location = declared_service_area_location(address, areas or [])
+    if not location:
         raise HTTPException(422, "Delivery address could not be located")
-    longitude, latitude = feature["geometry"]["coordinates"]
-    return {"latitude": latitude, "longitude": longitude, "formatted": feature.get("properties", {}).get("formatted"),
-            "properties": feature.get("properties", {})}
+    return location
 
 
 async def reverse_geocode(latitude, longitude):
@@ -99,9 +170,40 @@ async def validate_service_coordinates(db, latitude, longitude):
             "formatted": properties.get("formatted", "")}}
 
 
-async def validate_service_address(db, address):
-    location = await geocode_address(address)
+def configured_area_fallback(address, area):
+    """Place an unresolvable typed address at its configured area centre.
+
+    This is intended for admin-reviewed seller applications, not customer
+    delivery validation, which continues to require a map coordinate.
+    """
+    latitude = area.get("center_latitude")
+    longitude = area.get("center_longitude")
+    if latitude is None or longitude is None:
+        return None
+    return {
+        "latitude": latitude,
+        "longitude": longitude,
+        "formatted": ", ".join(filter(None, [address.get("address_line1"), address.get("city"),
+                                                address.get("state"), address.get("pincode")])),
+        "properties": {"location_source": "configured_service_area_fallback"},
+        "service_area_id": str(area["_id"]),
+        "service_area_name": area["name"],
+    }
+
+
+async def validate_service_address(db, address, allow_configured_fallback=False):
     areas = await db.service_areas.find({"is_active": True}).to_list(length=None)
+    if not areas:
+        raise HTTPException(422, "No active delivery area is configured")
+    try:
+        location = await geocode_address(address, areas)
+    except HTTPException as exc:
+        if not allow_configured_fallback or exc.status_code not in {422, 503}:
+            raise
+        fallback = configured_area_fallback(address, areas[0])
+        if not fallback:
+            raise
+        return fallback
     matched = next((area for area in areas if point_in_area(location["latitude"], location["longitude"],
                                                               location["properties"], area)), None)
     if not matched:
