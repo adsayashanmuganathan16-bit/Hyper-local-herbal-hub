@@ -1,4 +1,4 @@
-"""Remove only the two legacy accounts auto-created by database startup."""
+
 
 import asyncio
 

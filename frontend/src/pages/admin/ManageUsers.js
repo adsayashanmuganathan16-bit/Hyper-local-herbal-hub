@@ -94,7 +94,7 @@ export default function ManageUsers() {
                         </td>
                         <td className="text-sm">{user.phone}</td>
                         <td>
-                          <span className={`badge ${user.role === 'admin' ? 'badge-green' : user.role === 'delivery_partner' ? 'badge-yellow' : 'badge-gray'}`}>
+                          <span className={`badge ${user.role === 'admin' ? 'badge-green' : 'badge-gray'}`}>
                             {user.role?.replace(/_/g, ' ').toUpperCase()}
                           </span>
                         </td>

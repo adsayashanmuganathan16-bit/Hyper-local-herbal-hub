@@ -514,10 +514,15 @@ async def cancel_order(order_id: str, current_user: dict = Depends(require_custo
     if order["status"] not in ("placed", "confirmed"):
         raise HTTPException(status_code=400, detail="Order cannot be cancelled at this stage")
 
-    await db.orders.update_one(
-        {"_id": ObjectId(order_id)},
-        {"$set": {"status": "cancelled", "updated_at": utc_now()}},
+    cancellation = await db.orders.update_one(
+        {"_id": ObjectId(order_id), "status": {"$in": ["placed", "confirmed"]}},
+        {"$set": {"status": "cancelled", "inventory_released": True, "updated_at": utc_now()}},
     )
+    if not cancellation.modified_count:
+        raise HTTPException(status_code=409, detail="Order status changed; refresh and try again")
+    if order.get("inventory_reserved") and not order.get("inventory_released"):
+        from app.services.inventory_service import release_inventory
+        await release_inventory(db, order.get("items", []))
     await db.deliveries.update_one(
         {"order_id": order_id},
         {"$set": {"status": "failed", "updated_at": utc_now()}},

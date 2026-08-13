@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { FiMapPin, FiTruck, FiPackage, FiCheck, FiArrowLeft } from 'react-icons/fi';
 import { orderApi } from '../api/orderApi';
-import { deliveryApi } from '../api/deliveryApi';
 import { formatCurrency, formatDateTime, formatStatus, getStatusColor } from '../utils/helpers';
 import Loading from '../components/Loading';
-import RealtimeDeliveryTracker from '../components/RealtimeDeliveryTracker';
 import DeliveryMap from '../components/DeliveryMap';
 import ReviewForm from '../components/ReviewForm';
 import ReviewStars from '../components/ReviewStars';
@@ -46,7 +44,6 @@ export default function OrderTracking() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [order, setOrder] = useState(null);
-  const [delivery, setDelivery] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
   const [reviewingItem, setReviewingItem] = useState(null);
@@ -63,13 +60,6 @@ export default function OrderTracking() {
         setOrder(data);
         const { data: reviewData } = await reviewApi.getMyReviews({ page: 1 });
         setReviews((reviewData.items || []).filter((review) => review.order_id === id));
-        if (data.delivery) setDelivery(data.delivery);
-        else {
-          try {
-            const { data: dData } = await deliveryApi.track(id);
-            if (dData.order_id) setDelivery(dData);
-          } catch {}
-        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -250,8 +240,6 @@ export default function OrderTracking() {
             </div>
           )}
 
-          {/* Advanced live delivery tracking */}
-          {!isCancelled && <RealtimeDeliveryTracker orderId={id} />}
 
           {!!order.fulfillments?.length && <div className="track-card mt-6"><h3>Seller Parcels</h3>
             {order.fulfillments.map(parcel=><div className="admin-card mb-4" key={parcel.id}>

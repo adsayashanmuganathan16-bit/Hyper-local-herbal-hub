@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""Populate Herbal Hub's MongoDB database with realistic, repeatable demo data."""
+
 
 import asyncio
 import random
@@ -126,11 +125,10 @@ async def seed():
             ("seller1", "Kasun Ayurveda", "seller@herbalhub.in", "+94770000003", secrets.token_urlsafe(24), "seller"),
             ("seller2", "Amaya Naturals", "seller2@herbalhub.in", "+94770000004", secrets.token_urlsafe(24), "seller"),
             ("seller3", "Ceylon Herbal Care", "seller3@herbalhub.in", "+94770000005", secrets.token_urlsafe(24), "seller"),
-            ("delivery", "Ruwan Silva", "delivery@herbalhub.in", "+94770000006", secrets.token_urlsafe(24), "delivery_partner"),
         ]
         for key, name, email, phone, password, role in specs:
             users[key] = await upsert_user(db, name=name, email=email, phone=phone, password=password, role=role)
-        print("Seeded 1 admin, 1 customer, 3 sellers and 1 delivery partner")
+        print("Seeded 1 admin, 1 customer and 3 sellers")
 
         # Replace only seed-owned marketplace documents so reruns are deterministic.
         collections = ["categories", "seller_bank_accounts", "sellers", "reviews", "deliveries",
@@ -237,7 +235,7 @@ async def seed():
             if order_index < 10:
                 completed_orders.append(order)
             await db.deliveries.insert_one({
-                "order_id": str(result.inserted_id), "delivery_partner_id": str(users["delivery"]["_id"]),
+                "order_id": str(result.inserted_id),
                 "status": "delivered" if status == "delivered" else "assigned",
                 "current_location": {"lat": 6.9271 + order_index * .002, "lng": 79.8612 + order_index * .002},
                 "estimated_delivery": created + timedelta(days=2),

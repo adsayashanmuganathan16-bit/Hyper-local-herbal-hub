@@ -1,32 +1,55 @@
 const KEY = 'herbal_hub_wishlist';
+export const MAX_WISHLIST_ITEMS = 5;
 
-async function persist(id, wished) {
-  if (!localStorage.getItem('herbal_hub_token')) return;
-  const { wishlistApi } = await import('../api/wishlistApi');
-  if (wished) await wishlistApi.add(id);
-  else await wishlistApi.remove(id);
+async function persistWishlist(api, value, wished) {
+  const request = () => wished ? api.add(value) : api.remove(value);
+  try {
+    await request();
+  } catch (error) {
+    if (error.response) throw error;
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    await request();
+  }
 }
 
 export function wishlistIds() {
-  try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
+  try {
+    const stored = JSON.parse(localStorage.getItem(KEY) || '[]');
+    return Array.isArray(stored) ? [...new Set(stored.map(String))] : [];
+  } catch {
+    return [];
+  }
 }
 
 export function isWishlisted(id) {
   return wishlistIds().includes(String(id));
 }
 
-export function toggleWishlist(id) {
+export async function toggleWishlist(id) {
   const value = String(id);
   const current = wishlistIds();
-  const next = current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
+  const wished = !current.includes(value);
+
+  if (wished && current.length >= MAX_WISHLIST_ITEMS) {
+    throw new Error(`You can save up to ${MAX_WISHLIST_ITEMS} products in your wishlist.`);
+  }
+
+  if (localStorage.getItem('herbal_hub_token')) {
+    const { wishlistApi } = await import('../api/wishlistApi');
+    await persistWishlist(wishlistApi, value, wished);
+  }
+
+  const next = wished ? [...current, value] : current.filter((item) => item !== value);
   localStorage.setItem(KEY, JSON.stringify(next));
   window.dispatchEvent(new CustomEvent('herbal:wishlist', { detail: next }));
-  persist(value, next.includes(value)).catch(() => {});
-  return next.includes(value);
+  window.dispatchEvent(new CustomEvent('herbal:wishlist-synced', {
+    detail: { id: value, wished },
+  }));
+  return wished;
 }
 
 export function replaceWishlist(ids, notify = true) {
-  const next = [...new Set(ids.map(String))];
+  const next = [...new Set(ids.map(String))].slice(0, MAX_WISHLIST_ITEMS);
   localStorage.setItem(KEY, JSON.stringify(next));
   if (notify) window.dispatchEvent(new CustomEvent('herbal:wishlist', { detail: next }));
   return next;

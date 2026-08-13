@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""Clear marketplace data while preserving authentication and seller profiles."""
+
 
 import asyncio
 import sys

@@ -53,7 +53,7 @@ export default function ManagePayouts() {
     const haystack = `${row.business_name || ''} ${row.seller_name || ''} ${row.seller_id || ''} ${row.order_id || ''} ${row.transaction_reference || ''}`.toLowerCase();
     return matchesFilter && (!normalizedSearch || haystack.includes(normalizedSearch));
   });
-  return <div className="page-wrapper"><section className="dashboard-page"><div className="container">
+  return <div className="page-wrapper"><section className="dashboard-page payout-page"><div className="container">
     <div className="admin-page-actions"><button className="btn btn-secondary" onClick={exportReport}><FiDownload /> Export CSV</button></div>
     <form className="admin-card commission-card" onSubmit={saveCommission}>
       <div className="commission-card-copy"><h2><FiPercent size={18} /> Marketplace commission</h2><p>This rate applies only to future paid orders.</p></div>

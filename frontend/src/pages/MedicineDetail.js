@@ -25,6 +25,7 @@ export default function MedicineDetail() {
   const [selectedImg, setSelectedImg] = useState(0);
   const [qty, setQty] = useState(1);
   const [wished, setWished] = useState(() => isWishlisted(id));
+  const [wishlistBusy, setWishlistBusy] = useState(false);
 
   useEffect(() => {
     async function fetch() {
@@ -56,6 +57,20 @@ export default function MedicineDetail() {
     setAdding(true);
     await addToCart(medicine, qty);
     setAdding(false);
+  };
+
+  const handleWishlist = async () => {
+    if (wishlistBusy) return;
+    setWishlistBusy(true);
+    try {
+      const next = await toggleWishlist(id);
+      setWished(next);
+      toast.success(next ? 'Saved to wishlist' : 'Removed from wishlist');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || error.message || 'Unable to update your wishlist');
+    } finally {
+      setWishlistBusy(false);
+    }
   };
 
   if (loading) return <Loading />;
@@ -157,7 +172,7 @@ export default function MedicineDetail() {
                 </div>
                 {medicine.dosage && (
                   <div className="detail-meta-item">
-                    <span className="detail-meta-label">Dosage</span>
+                    <span className="detail-meta-label">Using Method</span>
                     <span className="detail-meta-value">{medicine.dosage}</span>
                   </div>
                 )}
@@ -179,7 +194,7 @@ export default function MedicineDetail() {
                 <button className="btn btn-primary btn-lg" onClick={handleAddToCart} disabled={outOfStock || adding}>
                   <FiShoppingCart size={18} /> {outOfStock ? 'Out of Stock' : adding ? 'Adding…' : 'Add to Cart'}
                 </button>
-                <button className={`detail-wishlist ${wished ? 'active' : ''}`} onClick={() => { const next=toggleWishlist(id); setWished(next); toast.success(next?'Saved to wishlist':'Removed from wishlist'); }} aria-label="Toggle wishlist"><FiHeart /> {wished ? 'Saved' : 'Wishlist'}</button>
+                <button className={`detail-wishlist ${wished ? 'active' : ''}`} onClick={handleWishlist} disabled={wishlistBusy} aria-label="Toggle wishlist"><FiHeart /> {wishlistBusy ? 'Saving…' : wished ? 'Saved' : 'Wishlist'}</button>
               </div>
             </div>
           </div>

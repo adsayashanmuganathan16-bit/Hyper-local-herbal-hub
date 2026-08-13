@@ -4,7 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 
-// Component & page styles (plain global stylesheets)
+
 import './components/Navbar.css';
 import './components/Footer.css';
 import './components/Loading.css';
@@ -33,7 +33,7 @@ import './pages/admin/SupportInbox.css';
 import './styles/enhance.css';
 import './styles/premium-system.css';
 
-// Components
+
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -43,7 +43,7 @@ import WorkspaceSidebar from './components/WorkspaceSidebar';
 import RoleWelcomeBanner from './components/RoleWelcomeBanner';
 import { useAuth } from './context/AuthContext';
 
-// Pages
+
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -80,10 +80,6 @@ import SellerOrders from './pages/seller/Orders';
 import SellerCustomers from './pages/seller/SellerCustomers';
 import SellerEarnings from './pages/seller/SellerEarnings';
 import SellerBankSetup from './pages/seller/SellerBankSetup';
-import AdminDeliveryStaff from './pages/admin/DeliveryStaff';
-import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
-import SellerDeliveryTracking from './pages/seller/DeliveryTracking';
-import AdminDeliveryTracking from './pages/admin/DeliveryTracking';
 import Reviews from './pages/Reviews';
 import NewsletterSubscribers from './pages/admin/NewsletterSubscribers';
 import SupportInbox from './pages/admin/SupportInbox';
@@ -146,8 +142,6 @@ function App() {
           <Route path="/admin/reviews" element={<ProtectedRoute adminOnly><Reviews /></ProtectedRoute>} />
           <Route path="/admin/subscribers" element={<ProtectedRoute adminOnly><NewsletterSubscribers /></ProtectedRoute>} />
           <Route path="/admin/support" element={<ProtectedRoute adminOnly><SupportInbox /></ProtectedRoute>} />
-          <Route path="/admin/delivery-staff" element={<ProtectedRoute adminOnly><AdminDeliveryStaff /></ProtectedRoute>} />
-          <Route path="/admin/delivery/:id/tracking" element={<ProtectedRoute adminOnly><AdminDeliveryTracking /></ProtectedRoute>} />
 
           {/* Seller Routes */}
           <Route path="/seller" element={<ProtectedRoute sellerOnly><SellerDashboard /></ProtectedRoute>} />
@@ -158,8 +152,6 @@ function App() {
           <Route path="/seller/earnings" element={<ProtectedRoute sellerOnly><SellerEarnings /></ProtectedRoute>} />
           <Route path="/seller/payment-setup" element={<ProtectedRoute sellerOnly><SellerBankSetup /></ProtectedRoute>} />
           <Route path="/seller/reviews" element={<ProtectedRoute sellerOnly><Reviews sellerMode /></ProtectedRoute>} />
-          <Route path="/seller/orders/:id/tracking" element={<ProtectedRoute sellerOnly><SellerDeliveryTracking /></ProtectedRoute>} />
-          <Route path="/delivery-staff" element={<ProtectedRoute deliveryStaffOnly><DeliveryDashboard /></ProtectedRoute>} />
         </Routes>
       </main>
       <Footer />

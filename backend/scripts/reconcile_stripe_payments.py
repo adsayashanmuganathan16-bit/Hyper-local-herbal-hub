@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""Reconcile pending Stripe payments using Stripe's authoritative Session state."""
+
 
 import asyncio
 import sys

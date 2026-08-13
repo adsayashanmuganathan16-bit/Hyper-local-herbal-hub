@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""Report whether product image records resolve to existing S3 objects."""
+
 
 import asyncio
 import sys

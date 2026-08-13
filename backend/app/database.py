@@ -117,6 +117,13 @@ async def connect_db():
     await db.sellers.create_index("email", unique=True)
     await db.seller_bank_accounts.create_index("seller_id", unique=True)
     await db.user_bank_accounts.create_index("user_id", unique=True)
+    wishlist_indexes = await db.wishlists.index_information()
+    for index_name, index_spec in wishlist_indexes.items():
+        index_keys = dict(index_spec.get("key", []))
+        if index_name != "_id_" and "userId" in index_keys:
+            # Legacy rows used `userId`. Its unique index treats every current
+            # row's missing field as the same null value, blocking item two.
+            await db.wishlists.drop_index(index_name)
     await db.wishlists.create_index([("user_id", 1), ("medicine_id", 1)], unique=True)
     await db.wishlists.create_index([("user_id", 1), ("created_at", -1)])
     await db.financial_orders.create_index("order_id", unique=True)
@@ -170,14 +177,6 @@ async def connect_db():
             await db.commission_settings.drop_index(index_name)
     await db.commission_settings.create_index("effective_from")
     await db.audit_logs.create_index([("entity_type", 1), ("entity_id", 1)])
-    await db.delivery_staff.create_index("user_id", unique=True)
-    await db.delivery_staff.create_index([("status", 1), ("is_active", 1)])
-    await db.delivery_locations.create_index("staff_id", unique=True)
-    await db.delivery_locations.create_index("order_id")
-    await db.courier_locations.create_index("courier_user_id", unique=True)
-    await db.courier_locations.create_index("order_id")
-    await db.courier_locations.create_index([("order_id", 1), ("updated_at", -1)])
-    await db.delivery_history.create_index([("order_id", 1), ("created_at", 1)])
     await db.seller_fulfillments.create_index([("order_id", 1), ("seller_user_id", 1)], unique=True)
     await db.seller_fulfillments.create_index([("seller_user_id", 1), ("status", 1)])
     await db.service_areas.create_index("name", unique=True)

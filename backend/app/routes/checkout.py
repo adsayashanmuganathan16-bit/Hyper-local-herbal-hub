@@ -9,6 +9,7 @@ from app.services.payment_service import payment_service
 from app.services.email_service import email_service
 from app.services.service_area_service import validate_service_coordinates, distance_km
 from app.services.postal_shipping_service import calculate_parcel_weight, calculate_shipping_fee
+from app.services.inventory_service import release_inventory, reserve_inventory
 
 router = APIRouter(prefix="/api/checkout", tags=["Checkout & Payment"])
 
@@ -156,11 +157,22 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
         "prescription_id": order_data.prescription_id,
         "notes": order_data.notes,
         "invoice_url": None,
+        "inventory_reserved": True,
+        "inventory_released": False,
         "created_at": utc_now(),
         "updated_at": utc_now(),
     }
 
-    result = await db.orders.insert_one(order_doc)
+    try:
+        await reserve_inventory(db, validated_items)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    try:
+        result = await db.orders.insert_one(order_doc)
+    except Exception:
+        await release_inventory(db, validated_items)
+        raise
     from app.services.seller_fulfillment_service import create_seller_fulfillments
     await create_seller_fulfillments(db, str(result.inserted_id), order_doc, seller_amounts,
                                      payment_ready=not is_online_payment)
@@ -195,6 +207,7 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
                               "updated_at": utc_now()}},
                 )
         except Exception as exc:
+            await release_inventory(db, validated_items)
             await db.orders.delete_one({"_id": result.inserted_id})
             await db.financial_orders.delete_one({"order_id": str(result.inserted_id)})
             await db.seller_order_allocations.delete_many({"order_id": str(result.inserted_id)})
@@ -217,6 +230,7 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
                 {"$set": {"payment_gateway": "cod", "status": "PENDING", "updated_at": utc_now()}},
             )
         except Exception as exc:
+            await release_inventory(db, validated_items)
             await db.orders.delete_one({"_id": result.inserted_id})
             await db.financial_orders.delete_one({"order_id": str(result.inserted_id)})
             await db.seller_order_allocations.delete_many({"order_id": str(result.inserted_id)})
@@ -237,7 +251,7 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
         from app.utils.helpers import generate_otp
         from app.services.notification_realtime import create_notification, notify_admins
         await db.deliveries.insert_one({
-            "order_id": str(result.inserted_id), "delivery_partner_id": None, "status": "assigned",
+            "order_id": str(result.inserted_id), "status": "assigned",
             "current_location": None, "estimated_delivery": utc_now() + timedelta(hours=48),
             "actual_delivery": None, "otp": generate_otp(4), "notes": None,
             "created_at": utc_now(), "updated_at": utc_now(),

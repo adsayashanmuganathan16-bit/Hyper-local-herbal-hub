@@ -198,7 +198,7 @@ export default function Home() {
           <div className="premium-section-heading light"><div><span>Trusted local expertise</span><h2>Meet the people behind your wellness.</h2></div></div>
           <div className="home-trust-grid">
             <article><span><Store/></span><div><small>APPROVED SELLERS</small><strong>Local businesses, verified</strong><p>Every active seller has a reviewed marketplace profile.</p></div></article>
-            <article><span><BadgeCheck/></span><div><small>TRANSPARENT PRODUCTS</small><strong>Know what you are buying</strong><p>Ingredients, benefits, dosage, and seller details in one place.</p></div></article>
+            <article><span><BadgeCheck/></span><div><small>TRANSPARENT PRODUCTS</small><strong>Know what you are buying</strong><p>Ingredients, benefits, using methods, and seller details in one place.</p></div></article>
             <article><span><Leaf/></span><div><small>COMMUNITY FIRST</small><strong>Spend locally, grow locally</strong><p>Your orders support herbal enterprises in your service area.</p></div></article>
           </div>
         </div>

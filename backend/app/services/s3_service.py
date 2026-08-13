@@ -9,12 +9,13 @@ class S3Service:
     """AWS S3 service for image upload/download/delete."""
 
     def __init__(self):
-        self.s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_REGION,
-        )
+        client_options = {"region_name": settings.AWS_REGION}
+        if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
+            client_options.update(
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            )
+        self.s3_client = boto3.client("s3", **client_options)
         self.bucket_name = settings.S3_BUCKET_NAME
 
     async def upload_image(self, file_data: bytes, folder: str, content_type: str = "image/jpeg") -> str:

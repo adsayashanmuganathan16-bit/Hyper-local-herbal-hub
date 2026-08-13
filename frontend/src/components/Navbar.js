@@ -9,11 +9,12 @@ import { formatDateTime } from '../utils/helpers';
 import { wishlistIds } from '../utils/wishlist';
 import { adminNavigation } from './AdminSidebar';
 import { customerNavigation, sellerNavigation } from './WorkspaceSidebar';
+import { websocketBaseUrl } from '../utils/apiBase';
 
 const LOGO_URL = process.env.PUBLIC_URL + '/logo.png';
 
 export default function Navbar() {
-  const { user, isAdmin, isSeller, isCustomer, isDeliveryStaff, isAuthenticated, logout } = useAuth();
+  const { user, isAdmin, isSeller, isCustomer, isAuthenticated, logout } = useAuth();
   const { totalItems } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,7 +38,7 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
-    const base=(process.env.REACT_APP_API_URL||'http://localhost:8000').replace(/^http/,'ws').replace(/\/$/,'');
+    const base = websocketBaseUrl();
     const socket=new WebSocket(`${base}/api/notifications/ws?token=${encodeURIComponent(localStorage.getItem('herbal_hub_token')||'')}`);
     socket.onmessage=event=>{const payload=JSON.parse(event.data);if(payload.type==='notification.created'){
       setNotifications(previous=>[payload.notification,...previous.filter(item=>item.id!==payload.notification.id)]);
@@ -216,7 +217,6 @@ export default function Navbar() {
                           <Link to="/seller/dashboard" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiBarChart2 size={16} /> Open Seller Center</Link>
                         </>
                       )}
-                      {isDeliveryStaff && <Link to="/delivery-staff" className="dropdown-item" onClick={() => setProfileOpen(false)}><FiPackage size={16} /> Assigned Deliveries</Link>}
                       <div className="divider" style={{ margin: '8px 0' }} />
                       <button className="dropdown-item logout-item" onClick={handleLogout}>
                         <FiLogOut size={16} /> Logout
@@ -253,7 +253,6 @@ export default function Navbar() {
               {isAdmin && adminNavigation.map(({ to, label }) => <Link key={to} to={to} className="mobile-menu-link" onClick={() => setMenuOpen(false)}>{label}</Link>)}
               {isSeller && sellerNavigation.map(({ to, label }) => <Link key={to} to={to} className="mobile-menu-link" onClick={() => setMenuOpen(false)}>{label}</Link>)}
               {isCustomer && customerNavigation.map(({ to, label }) => <Link key={to} to={to} className="mobile-menu-link" onClick={() => setMenuOpen(false)}>{label}</Link>)}
-              {isDeliveryStaff && <Link to="/delivery-staff" className="mobile-menu-link" onClick={() => setMenuOpen(false)}>Delivery Dashboard</Link>}
               <button className="mobile-menu-link logout" onClick={handleLogout}>Logout</button>
             </>
           ) : (

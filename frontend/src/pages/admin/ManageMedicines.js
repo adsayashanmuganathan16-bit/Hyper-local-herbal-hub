@@ -222,7 +222,7 @@ export default function ManageMedicines({ sellerMode = false, initialAddOpen = f
                     </div>
                     <div className="grid-2">
                       <div className="form-group"><label className="form-label">Manufacturer *</label><input name="manufacturer" className="form-input" value={form.manufacturer} onChange={handleFormChange} required /></div>
-                      <div className="form-group"><label className="form-label">Dosage</label><input name="dosage" className="form-input" value={form.dosage} onChange={handleFormChange} /></div>
+                      <div className="form-group"><label className="form-label">Using Method</label><input name="dosage" className="form-input" value={form.dosage} onChange={handleFormChange} /></div>
                     </div>
                     <div className="form-group"><label className="form-label">Ingredients (comma separated)</label><input name="ingredients" className="form-input" value={form.ingredients} onChange={handleFormChange} placeholder="Turmeric, Ashwagandha, Ginger" /></div>
                     <div className="form-group"><label className="form-label">Benefits (comma separated)</label><input name="benefits" className="form-input" value={form.benefits} onChange={handleFormChange} placeholder="Boosts immunity, Reduces stress" /></div>
