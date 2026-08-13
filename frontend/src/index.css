@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
 
-/* ===== CSS Variables - White & Green Theme ===== */
 :root {
     --green-900: #143d2b;
     --green-800: #1d5239;
@@ -45,8 +44,8 @@
     --font-body: 'Montserrat', sans-serif;
     --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
+
   
-  /* ===== Reset ===== */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html,
   body,
