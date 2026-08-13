@@ -1,8 +1,9 @@
+import { apiBaseUrl } from './apiBase';
+
 export const PRODUCT_IMAGE_PLACEHOLDER =
   `${process.env.PUBLIC_URL || ''}/product-placeholder.svg`;
 
-const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000')
-  .replace(/\/$/, '');
+const API_BASE_URL = apiBaseUrl();
 
 export function productImageUrl(source) {
   const candidate = typeof source === 'string'

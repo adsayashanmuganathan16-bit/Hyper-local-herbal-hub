@@ -66,3 +66,9 @@ npm test -- --watchAll=false
 ```
 
 For detailed backend configuration, see [`backend/README.md`](backend/README.md).
+
+## AWS deployment
+
+The repository includes systemd and Nginx configuration, health checks, and a
+direct EC2 deployment guide that does not require Docker. See
+[`AWS_DEPLOYMENT.md`](AWS_DEPLOYMENT.md).

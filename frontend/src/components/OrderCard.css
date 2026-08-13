@@ -10,8 +10,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding: 14px 16px;
     margin-bottom: 20px;
+    border: 1px solid var(--green-200);
+    border-radius: 12px;
+    background: var(--green-50) !important;
+    color: var(--green-900) !important;
   }
+  .order-card-header .font-bold { color: var(--green-900) !important; }
+  .order-card-header .text-gray { color: var(--gray-600) !important; }
   .order-progress {
     display: flex;
     align-items: center;

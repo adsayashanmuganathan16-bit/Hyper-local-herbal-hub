@@ -4,7 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 
-// Component & page styles (plain global stylesheets)
+
 import './components/Navbar.css';
 import './components/Footer.css';
 import './components/Loading.css';
@@ -33,7 +33,7 @@ import './pages/admin/SupportInbox.css';
 import './styles/enhance.css';
 import './styles/premium-system.css';
 
-// Components
+
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -43,7 +43,7 @@ import WorkspaceSidebar from './components/WorkspaceSidebar';
 import RoleWelcomeBanner from './components/RoleWelcomeBanner';
 import { useAuth } from './context/AuthContext';
 
-// Pages
+
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';

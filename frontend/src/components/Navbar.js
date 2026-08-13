@@ -9,6 +9,7 @@ import { formatDateTime } from '../utils/helpers';
 import { wishlistIds } from '../utils/wishlist';
 import { adminNavigation } from './AdminSidebar';
 import { customerNavigation, sellerNavigation } from './WorkspaceSidebar';
+import { websocketBaseUrl } from '../utils/apiBase';
 
 const LOGO_URL = process.env.PUBLIC_URL + '/logo.png';
 
@@ -37,7 +38,7 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
-    const base=(process.env.REACT_APP_API_URL||'http://localhost:8000').replace(/^http/,'ws').replace(/\/$/,'');
+    const base = websocketBaseUrl();
     const socket=new WebSocket(`${base}/api/notifications/ws?token=${encodeURIComponent(localStorage.getItem('herbal_hub_token')||'')}`);
     socket.onmessage=event=>{const payload=JSON.parse(event.data);if(payload.type==='notification.created'){
       setNotifications(previous=>[payload.notification,...previous.filter(item=>item.id!==payload.notification.id)]);

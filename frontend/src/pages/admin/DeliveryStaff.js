@@ -7,6 +7,7 @@ import { formatDateTime } from '../../utils/helpers';
 import DeliveryStaffMap from '../../components/DeliveryStaffMap';
 import { serviceAreaApi } from '../../api/serviceAreaApi';
 import { Link } from 'react-router-dom';
+import { websocketBaseUrl } from '../../utils/apiBase';
 
 const EMPTY = { name: '', email: '', phone: '', password: '', vehicle_type: 'Bike', nic: '', profile_photo: '' };
 export default function DeliveryStaff() {
@@ -17,7 +18,7 @@ export default function DeliveryStaff() {
     const [live, allOrders, events, serviceAreas] = await Promise.all([deliveryApi.liveStaff(), adminApi.getAllOrders({ status: 'ready_for_pickup' }), deliveryApi.history(), serviceAreaApi.list()]);
     setStaff(live.data.items || []); setOrders(allOrders.data.items || []); setHistory(events.data.items || []); setAreas(serviceAreas.data.items || []); setLoading(false);
   }, []);
-  useEffect(() => { load(); const base=(process.env.REACT_APP_API_URL||'http://localhost:8000').replace(/^http/,'ws').replace(/\/$/,'');
+  useEffect(() => { load(); const base = websocketBaseUrl();
     const socket=new WebSocket(`${base}/ws/delivery/admin?token=${encodeURIComponent(localStorage.getItem('herbal_hub_token')||'')}`);
     socket.onmessage=load; const keepalive=setInterval(()=>socket.readyState===WebSocket.OPEN&&socket.send('ping'),25000);
     return () => { clearInterval(keepalive); socket.close(); }; }, [load]);

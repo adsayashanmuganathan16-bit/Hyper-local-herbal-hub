@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""Populate Herbal Hub's MongoDB database with realistic, repeatable demo data."""
+
 
 import asyncio
 import random

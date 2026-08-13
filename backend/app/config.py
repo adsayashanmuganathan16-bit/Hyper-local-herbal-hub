@@ -38,6 +38,7 @@ class Settings:
 
     MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/herbal_hub")
     DB_NAME = os.getenv("DB_NAME", "herbal_hub")
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
 
     SECRET_KEY = _required("SECRET_KEY")
     JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
@@ -68,6 +69,11 @@ class Settings:
     TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "")
 
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    ALLOWED_ORIGINS = [
+        value.strip().rstrip("/")
+        for value in os.getenv("ALLOWED_ORIGINS", FRONTEND_URL).split(",")
+        if value.strip()
+    ]
     BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "http://localhost:8000").rstrip("/")
     GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_API_KEY", "")
     INITIAL_SERVICE_AREA_NAME = os.getenv("INITIAL_SERVICE_AREA_NAME", "Kilinochchi District")
@@ -155,15 +161,12 @@ class Settings:
         if self.PROFILE_IMAGE_STORAGE not in {"local", "s3"}:
             raise RuntimeError("PROFILE_IMAGE_STORAGE must be either local or s3.")
         if self.PROFILE_IMAGE_STORAGE == "s3":
-            required = {
-                "AWS_ACCESS_KEY_ID": self.AWS_ACCESS_KEY_ID,
-                "AWS_SECRET_ACCESS_KEY": self.AWS_SECRET_ACCESS_KEY,
-                "S3_BUCKET_NAME": self.S3_BUCKET_NAME,
-            }
-            missing = [name for name, value in required.items() if not value.strip()]
-            if missing:
+            if not self.S3_BUCKET_NAME.strip():
+                raise RuntimeError("PROFILE_IMAGE_STORAGE=s3 requires S3_BUCKET_NAME.")
+            if bool(self.AWS_ACCESS_KEY_ID) != bool(self.AWS_SECRET_ACCESS_KEY):
                 raise RuntimeError(
-                    f"PROFILE_IMAGE_STORAGE=s3 requires: {', '.join(missing)}."
+                    "Configure both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, "
+                    "or leave both empty to use the EC2/ECS IAM role."
                 )
 
 

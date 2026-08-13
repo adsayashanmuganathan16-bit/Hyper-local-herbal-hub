@@ -43,3 +43,20 @@ def test_admin_password_accepts_ten_characters(monkeypatch):
     monkeypatch.setattr(settings, "ADMIN_EMAIL", "admin@example.invalid")
     monkeypatch.setattr(settings, "ADMIN_PASSWORD", "Admin@2006")
     settings.validate_admin_configuration()
+
+
+def test_s3_accepts_iam_role_credentials(monkeypatch):
+    monkeypatch.setattr(settings, "PROFILE_IMAGE_STORAGE", "s3")
+    monkeypatch.setattr(settings, "S3_BUCKET_NAME", "herbal-production-images")
+    monkeypatch.setattr(settings, "AWS_ACCESS_KEY_ID", "")
+    monkeypatch.setattr(settings, "AWS_SECRET_ACCESS_KEY", "")
+    settings.validate_storage_configuration()
+
+
+def test_s3_rejects_partial_static_credentials(monkeypatch):
+    monkeypatch.setattr(settings, "PROFILE_IMAGE_STORAGE", "s3")
+    monkeypatch.setattr(settings, "S3_BUCKET_NAME", "herbal-production-images")
+    monkeypatch.setattr(settings, "AWS_ACCESS_KEY_ID", "access-key-only")
+    monkeypatch.setattr(settings, "AWS_SECRET_ACCESS_KEY", "")
+    with pytest.raises(RuntimeError, match="both AWS_ACCESS_KEY_ID"):
+        settings.validate_storage_configuration()

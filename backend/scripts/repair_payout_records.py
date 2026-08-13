@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""Repair payout math and remove duplicate order/seller payout records."""
+
 
 import asyncio
 import sys

@@ -7,6 +7,7 @@ from app.utils.helpers import get_product_image, serialize_doc
 from app.utils.time import utc_now
 
 router = APIRouter(prefix="/api/wishlist", tags=["Wishlist"])
+MAX_WISHLIST_ITEMS = 5
 
 
 def product_view(medicine: dict) -> dict:
@@ -35,6 +36,14 @@ async def add_to_wishlist(medicine_id: str, user=Depends(require_customer)):
     medicine = await db.medicines.find_one({"_id": ObjectId(medicine_id), "is_active": True})
     if not medicine:
         raise HTTPException(404, "Product not found or unavailable")
+    existing = await db.wishlists.find_one({"user_id": user["_id"], "medicine_id": medicine_id})
+    if existing:
+        return {"message": "Product is already saved", "medicine_id": medicine_id}
+    if await db.wishlists.count_documents({"user_id": user["_id"]}) >= MAX_WISHLIST_ITEMS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"You can save up to {MAX_WISHLIST_ITEMS} products in your wishlist.",
+        )
     await db.wishlists.update_one(
         {"user_id": user["_id"], "medicine_id": medicine_id},
         {"$setOnInsert": {"user_id": user["_id"], "medicine_id": medicine_id, "created_at": now}},

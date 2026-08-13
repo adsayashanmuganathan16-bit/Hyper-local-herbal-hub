@@ -14,6 +14,7 @@ export default function MedicineCard({ medicine }) {
   const { isAuthenticated, isCustomer } = useAuth();
   const [adding, setAdding] = useState(false);
   const [wished, setWished] = useState(() => isWishlisted(medicine.id));
+  const [wishlistBusy, setWishlistBusy] = useState(false);
 
   const image = productImageUrl(medicine);
   const hasDiscount = medicine.discount_price && medicine.discount_price < medicine.price;
@@ -34,6 +35,22 @@ export default function MedicineCard({ medicine }) {
     setAdding(false);
   };
 
+  const handleWishlist = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (wishlistBusy) return;
+    setWishlistBusy(true);
+    try {
+      const next = await toggleWishlist(medicine.id);
+      setWished(next);
+      toast.success(next ? 'Saved to wishlist' : 'Removed from wishlist');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || error.message || 'Unable to update your wishlist');
+    } finally {
+      setWishlistBusy(false);
+    }
+  };
+
   return (
     <Link to={`/medicine/${medicine.id}`} className="med-card">
       <div className="med-card-img-wrap">
@@ -42,7 +59,8 @@ export default function MedicineCard({ medicine }) {
           type="button"
           className={`med-card-wishlist ${wished ? 'active' : ''}`}
           aria-label={wished ? `Remove ${medicine.name} from wishlist` : `Add ${medicine.name} to wishlist`}
-          onClick={(event) => { event.preventDefault(); event.stopPropagation(); setWished(toggleWishlist(medicine.id)); toast.success(wished ? 'Removed from wishlist' : 'Saved to wishlist'); }}
+          onClick={handleWishlist}
+          disabled={wishlistBusy}
         >
           <FiHeart />
         </button>

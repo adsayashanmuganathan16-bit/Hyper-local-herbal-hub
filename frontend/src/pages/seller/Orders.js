@@ -10,6 +10,7 @@ import Loading from '../../components/Loading';
 import PostalShippingControls from '../../components/PostalShippingControls';
 import { productImageUrl, useProductImageFallback } from '../../utils/productImage';
 import './SellerOrders.css';
+import { websocketBaseUrl } from '../../utils/apiBase';
 
 const TIMELINE = [
   ['placed', 'Order placed'],
@@ -168,7 +169,7 @@ export default function SellerOrders() {
 
   useEffect(() => {
     load();
-    const base = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/^http/, 'ws').replace(/\/$/, '');
+    const base = websocketBaseUrl();
     const socket = new WebSocket(`${base}/api/notifications/ws?token=${encodeURIComponent(localStorage.getItem('herbal_hub_token') || '')}`);
     socket.onmessage = (event) => {
       const payload = JSON.parse(event.data);
