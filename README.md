@@ -1,13 +1,14 @@
 # Herbal Hub
 
-A full-stack e-commerce platform for herbal medicines, with a FastAPI backend and a React frontend.
+Herbal Hub is a React frontend with a FastAPI backend.
 
-## Structure
+## Requirements
 
-- `backend/` — FastAPI application (auth, medicines, cart, orders, prescriptions, delivery, admin, notifications, reviews, analytics)
-- `frontend/` — React application (pages, components, API clients, context)
+- Python 3.10 or newer
+- Node.js and npm
+- MongoDB connection details
 
-## Getting Started
+## First-time setup
 
 ### Backend
 
@@ -16,27 +17,52 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-[ -f .env ] || cp .env.example .env
-# Edit .env and set SECRET_KEY plus the integrations you use.
-uvicorn app.main:app --reload
+cp .env.example .env
 ```
 
-The guarded copy creates `.env` only once. Do not run
-`cp .env.example .env` after configuring the file because a normal copy
-overwrites the saved values.
-
-The backend intentionally refuses to start without `SECRET_KEY`. It also
-validates credentials for the selected `PAYMENT_PROVIDER`. Keep
-`backend/.env` local; commit only the placeholder-only
-`backend/.env.example`.
-
-See [`backend/README.md`](backend/README.md) for configuration, seeding,
-testing, payments, and the full backend structure.
+Add the required database, authentication, Stripe, and other service credentials to `backend/.env`.
 
 ### Frontend
 
 ```bash
 cd frontend
 npm install
+```
+
+## Start the application
+
+Open two terminals from the project directory.
+
+### Terminal 1: start the backend
+
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --reload
+```
+
+The backend runs at `http://localhost:8000`. API documentation is available at `http://localhost:8000/docs`.
+
+### Terminal 2: start the frontend
+
+```bash
+cd frontend
 npm start
 ```
+
+The frontend opens at `http://localhost:3000`.
+
+## Run tests
+
+```bash
+cd backend
+source .venv/bin/activate
+pytest -q
+```
+
+```bash
+cd frontend
+npm test -- --watchAll=false
+```
+
+For detailed backend configuration, see [`backend/README.md`](backend/README.md).

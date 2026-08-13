@@ -1,7 +1,11 @@
 import smtplib
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from app.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class EmailService:
@@ -16,25 +20,34 @@ class EmailService:
             "your_email@gmail.com",
             "change-me",
         }
+        smtp_user = settings.SMTP_USER.strip()
+        smtp_password = settings.SMTP_PASSWORD.strip()
+
+        # Google displays 16-character app passwords in four groups. Users
+        # commonly paste those display spaces into .env, but SMTP auth expects
+        # the underlying 16-character value.
+        if settings.SMTP_HOST.strip().lower() == "smtp.gmail.com":
+            smtp_password = smtp_password.replace(" ", "")
+
         if (
-            settings.SMTP_USER.strip().lower() in placeholder_values
-            or settings.SMTP_PASSWORD.strip().lower() in placeholder_values
+            smtp_user.lower() in placeholder_values
+            or smtp_password.lower() in placeholder_values
         ):
             return False
         try:
             message = MIMEMultipart("alternative")
             message["Subject"] = subject
-            message["From"] = settings.SMTP_USER
+            message["From"] = smtp_user
             message["To"] = to_email
             message.attach(MIMEText(html_body, "html"))
 
             with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
                 server.starttls()
-                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                server.sendmail(settings.SMTP_USER, to_email, message.as_string())
+                server.login(smtp_user, smtp_password)
+                server.sendmail(smtp_user, to_email, message.as_string())
             return True
-        except Exception as e:
-            print(f"Email send failed: {e}")
+        except Exception:
+            logger.exception("SMTP email delivery failed")
             return False
 
     async def send_order_confirmation(self, to_email: str, order_id: str, amount: float) -> bool:
