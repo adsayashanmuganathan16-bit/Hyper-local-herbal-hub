@@ -54,8 +54,6 @@ class Settings:
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
     AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
     S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "")
-    PROFILE_IMAGE_STORAGE = os.getenv("PROFILE_IMAGE_STORAGE", "local").lower()
-    PROFILE_IMAGE_UPLOAD_DIR = os.getenv("PROFILE_IMAGE_UPLOAD_DIR", "uploads/profile-images")
     PROFILE_IMAGE_MAX_BYTES = _integer("PROFILE_IMAGE_MAX_BYTES", 5 * 1024 * 1024)
 
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
@@ -158,16 +156,13 @@ class Settings:
             raise RuntimeError("Configure a valid ADMIN_EMAIL and an ADMIN_PASSWORD of at least 10 characters.")
 
     def validate_storage_configuration(self) -> None:
-        if self.PROFILE_IMAGE_STORAGE not in {"local", "s3"}:
-            raise RuntimeError("PROFILE_IMAGE_STORAGE must be either local or s3.")
-        if self.PROFILE_IMAGE_STORAGE == "s3":
-            if not self.S3_BUCKET_NAME.strip():
-                raise RuntimeError("PROFILE_IMAGE_STORAGE=s3 requires S3_BUCKET_NAME.")
-            if bool(self.AWS_ACCESS_KEY_ID) != bool(self.AWS_SECRET_ACCESS_KEY):
-                raise RuntimeError(
-                    "Configure both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, "
-                    "or leave both empty to use the EC2/ECS IAM role."
-                )
+        if not self.S3_BUCKET_NAME.strip():
+            raise RuntimeError("S3_BUCKET_NAME is required for image storage.")
+        if bool(self.AWS_ACCESS_KEY_ID) != bool(self.AWS_SECRET_ACCESS_KEY):
+            raise RuntimeError(
+                "Configure both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, "
+                "or leave both empty to use the EC2/ECS IAM role."
+            )
 
 
 settings = Settings()

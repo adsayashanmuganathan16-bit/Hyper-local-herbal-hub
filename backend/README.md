@@ -156,8 +156,9 @@ Some tests use environment overrides. Keep `.env` local and never commit it.
 ## Configuration notes
 
 - Stripe is the only online checkout provider; cash on delivery remains available.
-- SMTP, AWS, Twilio, Geoapify, Redis, and Celery are optional for the
-  corresponding features.
+- S3 is required for persisted profile, product, and prescription images.
+  SMTP, Twilio, Geoapify, Redis, and Celery are optional for their corresponding
+  features. On AWS, an EC2/ECS IAM role can provide S3 credentials.
 - `PLANTNET_API_KEY` enables `POST /api/plants/identify`; the key remains on
   the backend and is never sent to the browser.
 - `GEMINI_API_KEY` enriches PlantNet results with schema-validated English and

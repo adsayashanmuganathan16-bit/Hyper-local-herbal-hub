@@ -93,7 +93,10 @@ def test_profile_image_upload_updates_and_sanitizes_user(monkeypatch):
     async def save_image(data, content_type):
         assert data == PNG_IMAGE
         assert content_type == "image/png"
-        return "http://localhost:8000/uploads/profile-images/avatar.png"
+        return (
+            f"https://{auth.s3_service.bucket_name}.s3."
+            f"{auth.settings.AWS_REGION}.amazonaws.com/profile-images/avatar.png"
+        )
 
     monkeypatch.setattr(auth, "save_profile_image", save_image)
     response = asyncio.run(
@@ -103,8 +106,8 @@ def test_profile_image_upload_updates_and_sanitizes_user(monkeypatch):
         )
     )
 
-    assert response["user"]["profile_image"].endswith("avatar.png")
-    assert response["image_url"].endswith("avatar.png")
+    assert "/profile-images/avatar.png" in response["user"]["profile_image"]
+    assert "/profile-images/avatar.png" in response["image_url"]
     assert "password" not in response["user"]
 
 

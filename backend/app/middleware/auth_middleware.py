@@ -65,7 +65,6 @@ async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
 
-
 async def require_seller(current_user: dict = Depends(get_current_user)) -> dict:
     """Require an active seller account."""
     if current_user.get("role") != "seller":
@@ -87,17 +86,4 @@ async def require_product_manager(current_user: dict = Depends(get_current_user)
         seller = await get_db().sellers.find_one({"user_id": current_user["_id"]})
         if not seller or seller.get("approval_status") != "APPROVED":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Seller approval is required")
-    return current_user
-
-
-async def require_delivery_partner(current_user: dict = Depends(get_current_user)) -> dict:
-    """Require delivery partner role."""
-    if current_user.get("role") not in ("admin", "delivery_partner", "delivery_staff"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Delivery partner access required")
-    return current_user
-
-
-async def require_delivery_staff(current_user: dict = Depends(get_current_user)) -> dict:
-    if current_user.get("role") not in ("delivery_staff", "delivery_partner"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Delivery staff access required")
     return current_user

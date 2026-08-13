@@ -3,8 +3,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Loading from './Loading';
 
-export default function ProtectedRoute({ children, adminOnly, sellerOnly, customerOnly, deliveryStaffOnly }) {
-  const { user, isAuthenticated, isAdmin, isSeller, isCustomer, isDeliveryStaff, loading } = useAuth();
+export default function ProtectedRoute({ children, adminOnly, sellerOnly, customerOnly }) {
+  const { user, isAuthenticated, isAdmin, isSeller, isCustomer, loading } = useAuth();
   const location = useLocation();
 
   if (loading) return <Loading />;
@@ -15,7 +15,6 @@ export default function ProtectedRoute({ children, adminOnly, sellerOnly, custom
     return <Navigate to="/seller/payment-setup" replace state={{ onboarding: true }} />;
   }
   if (customerOnly && !isCustomer) return <Navigate to="/" replace />;
-  if (deliveryStaffOnly && !isDeliveryStaff) return <Navigate to="/" replace />;
 
   return children;
 }

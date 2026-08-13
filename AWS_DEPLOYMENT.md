@@ -64,7 +64,6 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 cp .env.example .env
 chmod 600 .env
-mkdir -p uploads/profile-images
 ```
 
 Install and build the frontend:
@@ -90,7 +89,6 @@ FRONTEND_URL=https://app.example.com
 BACKEND_PUBLIC_URL=https://app.example.com
 ALLOWED_ORIGINS=https://app.example.com
 
-PROFILE_IMAGE_STORAGE=s3
 AWS_REGION=ap-south-1
 S3_BUCKET_NAME=<private-s3-bucket>
 AWS_ACCESS_KEY_ID=

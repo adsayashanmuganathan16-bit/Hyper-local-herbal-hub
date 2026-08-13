@@ -8,8 +8,6 @@ class UserRole(str, Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
     SELLER = "seller"
-    DELIVERY_PARTNER = "delivery_partner"
-    DELIVERY_STAFF = "delivery_staff"
 
 
 class UserCreate(BaseModel):

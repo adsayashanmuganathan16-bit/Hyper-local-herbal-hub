@@ -46,7 +46,6 @@ def test_admin_password_accepts_ten_characters(monkeypatch):
 
 
 def test_s3_accepts_iam_role_credentials(monkeypatch):
-    monkeypatch.setattr(settings, "PROFILE_IMAGE_STORAGE", "s3")
     monkeypatch.setattr(settings, "S3_BUCKET_NAME", "herbal-production-images")
     monkeypatch.setattr(settings, "AWS_ACCESS_KEY_ID", "")
     monkeypatch.setattr(settings, "AWS_SECRET_ACCESS_KEY", "")
@@ -54,9 +53,14 @@ def test_s3_accepts_iam_role_credentials(monkeypatch):
 
 
 def test_s3_rejects_partial_static_credentials(monkeypatch):
-    monkeypatch.setattr(settings, "PROFILE_IMAGE_STORAGE", "s3")
     monkeypatch.setattr(settings, "S3_BUCKET_NAME", "herbal-production-images")
     monkeypatch.setattr(settings, "AWS_ACCESS_KEY_ID", "access-key-only")
     monkeypatch.setattr(settings, "AWS_SECRET_ACCESS_KEY", "")
     with pytest.raises(RuntimeError, match="both AWS_ACCESS_KEY_ID"):
+        settings.validate_storage_configuration()
+
+
+def test_s3_bucket_is_required(monkeypatch):
+    monkeypatch.setattr(settings, "S3_BUCKET_NAME", "")
+    with pytest.raises(RuntimeError, match="S3_BUCKET_NAME"):
         settings.validate_storage_configuration()

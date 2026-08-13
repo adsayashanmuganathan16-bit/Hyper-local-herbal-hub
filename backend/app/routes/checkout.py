@@ -251,7 +251,7 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(req
         from app.utils.helpers import generate_otp
         from app.services.notification_realtime import create_notification, notify_admins
         await db.deliveries.insert_one({
-            "order_id": str(result.inserted_id), "delivery_partner_id": None, "status": "assigned",
+            "order_id": str(result.inserted_id), "status": "assigned",
             "current_location": None, "estimated_delivery": utc_now() + timedelta(hours=48),
             "actual_delivery": None, "otp": generate_otp(4), "notes": None,
             "created_at": utc_now(), "updated_at": utc_now(),

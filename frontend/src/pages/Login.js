@@ -38,9 +38,6 @@ export default function Login() {
     if (!path) return false;
     if (path.startsWith('/admin')) return role === 'admin';
     if (path.startsWith('/seller')) return role === 'seller';
-    if (path.startsWith('/delivery-staff')) {
-      return ['delivery_staff', 'delivery_partner'].includes(role);
-    }
     if (['/cart', '/checkout', '/orders', '/prescriptions'].some((prefix) => path.startsWith(prefix))) {
       return role === 'customer';
     }
@@ -64,9 +61,7 @@ export default function Login() {
       }
       toast.success(loggedInUser?.name ? `Welcome, ${loggedInUser.name}!` : 'Welcome back!');
       const requestedPath = location.state?.from?.pathname;
-      const roleHome = ['delivery_staff', 'delivery_partner'].includes(loggedInUser?.role)
-        ? '/delivery-staff'
-        : loggedInUser?.role === 'seller'
+      const roleHome = loggedInUser?.role === 'seller'
           ? '/seller/dashboard'
           : loggedInUser?.role === 'admin'
             ? '/admin/dashboard'

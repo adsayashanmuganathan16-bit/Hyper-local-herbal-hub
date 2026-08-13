@@ -15,7 +15,6 @@ const ADMIN_TITLES = {
   '/admin/reviews': 'Customer Reviews',
   '/admin/subscribers': 'Email Subscribers',
   '/admin/support': 'Support Inbox',
-  '/admin/delivery-staff': 'Delivery Operations',
 };
 
 const SELLER_TITLES = {

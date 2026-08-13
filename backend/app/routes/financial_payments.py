@@ -138,7 +138,7 @@ async def _record_verified_payment(db, event, payload: dict, request: Request, s
     await db.deliveries.update_one(
         {"order_id": event.order_id},
         {"$setOnInsert": {
-            "order_id": event.order_id, "delivery_partner_id": None, "status": "assigned",
+            "order_id": event.order_id, "status": "assigned",
             "current_location": None, "estimated_delivery": now + timedelta(hours=48),
             "actual_delivery": None, "otp": generate_otp(4), "notes": None,
             "created_at": now, "updated_at": now,
