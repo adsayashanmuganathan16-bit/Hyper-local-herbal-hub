@@ -1,4 +1,4 @@
-# AWS deployment without Docker
+# AWS deployment
 
 This guide deploys Herbal Hub directly on one Ubuntu 24.04 EC2 instance:
 
