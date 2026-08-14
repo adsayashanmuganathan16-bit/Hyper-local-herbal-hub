@@ -12,6 +12,26 @@ npm start        # dev server at http://localhost:3000
 npm run build    # production build in ./build
 ```
 
+## Deploying to Vercel
+
+Import the repository into Vercel and set the project **Root Directory** to
+`frontend`. The committed `vercel.json` configures the Create React App build
+and preserves client-side routing when a page is opened directly.
+
+Add the following variables in **Project Settings > Environment Variables**
+for Production and Preview, then redeploy:
+
+```env
+REACT_APP_API_URL=https://your-backend.example.com
+REACT_APP_GEOAPIFY_API_KEY=your_geoapify_api_key
+REACT_APP_GOOGLE_CLIENT_ID=your_google_web_client_id.apps.googleusercontent.com
+```
+
+`REACT_APP_API_URL` must be the public HTTPS origin of the deployed FastAPI
+backend, without a trailing slash. On the backend, set `FRONTEND_URL` and add
+the Vercel production domain to `ALLOWED_ORIGINS` so browser API requests,
+email links, and WebSocket connections use the deployed frontend.
+
 ## Accounts
 
 The frontend does not contain seeded credentials. Customers can register from
